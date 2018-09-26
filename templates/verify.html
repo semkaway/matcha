@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		img {
+			max-width: 40vw;
+		}
+
+		button {
+			height: 5vh;
+			width: 12vw;
+			margin: 1vh;
+		}
+
+		a {
+			text-transform: uppercase;
+			text-decoration: none;
+			color: black;
+		}
+	</style>
+</head>
+<body>
+	<h1>Hello, {{arguments.username}}!</h1>
+	<p>Please, complete your registration to Matcha:</p>
+	<img src="https://images.pexels.com/photos/58572/pexels-photo-58572.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260"><br>
+	<button><a href="{{url_for('complete', token=arguments.token, _external = True)}}">Complete registration</a></button>
+	<p>If you got this message by mistake, please, ignore it.</p>
+	<p>All the best,</p>
+	<p>Matcha team</p>
+
+</body>
+</html>

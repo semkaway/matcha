@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+	<form method="POST" action="" class="jumbotron pt-3 mt-5">
+		<h1>Log in to your account</h1>
+	  	<div class="form-row">
+		  	<div class="form-group col-md-6">
+		      <label for="inputUsername"></label>
+		      <input name="username" type="text" class="form-control" id="inputUsername" placeholder="Username" pattern="[a-zA-Z0-9_-]{3,12}" title="must be alphanumeric in 3-12 chars" required>
+		    </div>
+		    <div class="form-group col-md-6">
+		      <label for="inputPassword4"></label>
+		      <input name="password" type="password" class="form-control" id="inputPassword4" placeholder="Password" minlength="5" maxlength="15" required>
+		    </div>
+		</div>
+	  <button type="submit" id="login" value="{{ value }}" class="btn btn-warning">Log in</button>
+<!-- 	  <div id="test_id" value="{{ value }}" class="hidden-alert"></div> -->
+	  <a class="btn btn-secondary" href="/password_reset" role="button">Forgot password</a>
+	</form>
+
+{% endblock %}

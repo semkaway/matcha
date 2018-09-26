@@ -1,0 +1,83 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+
+{% if session.logged_in %}
+	<h1>There's plenty of fish in the sea</h1>
+		<div class="row">
+		{% for user in users %}
+			{% if user.blocked == False %}
+				<div class="profile-card col-12 col-md-6 border-warning border-left mt-3">
+					<div class="mt-3 mr-5">
+						<img class="card-img float-left mt-2 ml-5 img-responsive" src="../{{user.profile_pic}}">
+						<div class="text-justify float-right mr-4 ">
+					    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
+					    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+					    	{% for user_age in age %}
+								{% if user_age[0] == user.id %}
+									<p class="card-text">Age: {{user_age[1].age}}</p>
+								{% endif %}
+							{% endfor %}
+							<p class="card-text">Gender: {{user.gender}}</p>
+							<p class="card-text">Looking for: {{user.target_gender}}</p>
+							{% if user.user_city == "Unknown" %}
+								<p class="card-text">From: {{user.city}}</p>
+							{% else %}
+								<p class="card-text">From: {{user.user_city}}</p>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+			{% endif %}
+		{% endfor %}
+		</div>
+		{% if pages|length > 1 %}
+			<nav class="mt-3">
+			  	<ul class="pagination">
+			    	{% for page in pages %}
+			    		<li class="page-item"><a class="page-link text-warning" href="/{{page}}">{{page}}</a></li>
+			   		{% endfor %}
+			  	</ul>
+			</nav>
+		{% endif %}
+{% else %}
+
+<div class="jumbotron login-box float-left pt-3 mt-5">
+	<form method="POST" action="">
+	<h1>It's time to find your soulmate</h1>
+	  <div class="form-row">
+	    <div class="form-group col-md-6">
+	      <label for="inputName"></label>
+	      <input name="name" type="text" class="form-control" id="inputName" placeholder="Name" pattern="[a-zA-Z0-9_-]{1,12}" title="must be alphanumeric in 1-12 chars" required>
+	    </div>
+	    <div class="form-group col-md-6">
+	      <label for="inputLastname"></label>
+	      <input name="lastname" type="text" class="form-control" id="inputLastname" placeholder="Last name" pattern="[a-zA-Z0-9_-]{1,50}" title="must be alphanumeric in 1-50 chars" required>
+	    </div>
+	    <div class="form-group col-md-6">
+	      <label for="inputUsername"></label>
+	      <input name="username" type="text" class="form-control" id="inputUsername" placeholder="Username" pattern="[a-zA-Z0-9_-]{3,12}" title="must be alphanumeric in 3-12 chars" required>
+	    </div>
+	    <div class="form-group col-md-6">
+	      <label for="inputEmail4"></label>
+	      <input name="email" type="email" class="form-control" id="inputEmail4" placeholder="Email" pattern="[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,4}$" minlength="5" required>
+	    </div>
+	  </div>
+	  <div class="form-row">
+	    <div class="form-group col-md-6">
+	      <label for="inputPassword4"></label>
+	      <input name="password" type="password" class="form-control" id="inputPassword4" placeholder="Password" minlength="5" maxlength="15" required>
+	    </div>
+	    <div class="form-group col-md-6">
+	      <label for="inputConfirmPassword4"></label>
+	      <input name="confirm" type="password" class="form-control" id="inputConfirmPassword4" placeholder="Confirm password" minlength="5" maxlength="15" required>
+	    </div>
+	  </div>
+	  <button type="submit" class="btn btn-warning btn-lg btn-block">Sign up</button>
+	</form>
+</div>
+<div class="clearfix"></div>
+
+{% endif %}
+
+{% endblock %}

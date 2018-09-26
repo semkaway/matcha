@@ -1,0 +1,7 @@
+Hello, {{arguments.my_username}},
+
+{{url_for('profile', username=arguments.who_checked, _external = True)}} has just checked your profile
+
+All the best,
+
+Matcha team

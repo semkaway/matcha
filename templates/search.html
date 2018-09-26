@@ -1,0 +1,130 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+	<h1>There's plenty of fish in the sea</h1>
+	{% set min_age = request.args.min_age|default(20) %}
+	{% set max_age = request.args.max_age|default(50) %}
+	{% set min_fame = request.args.min_fame|default(0) %}
+	{% set max_fame = request.args.max_fame|default(1) %}
+	{% set max_location = request.args.max_location|default("Kyiv") %}
+	{% set interests = request.args.interests|default("") %}
+		Sort by:
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'age' %} 
+		  		<input class="recommend-filter ml-2" type="checkbox" id="age" value="age" checked>
+		  	{% else %}
+		  		<input class="recommend-filter ml-2" type="checkbox" id="age" value="age">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="age">age</label>
+		</div>
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'fame_rating' %}
+				<input class="recommend-filter" type="checkbox" id="fame_rating" value="fame_rating" checked>
+		  	{% else %}
+		  		<input class="recommend-filter" type="checkbox" id="fame_rating" value="fame_rating">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="fame_rating">fame rating</label>
+		</div><br>
+		<div class="card p-2">
+			Filters:
+<!-- 			<form> -->
+				<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="age_filter">Aged between</label>
+		            <input id="min_age" name="min_age" type="number" value={{min_age}}> and 
+		            <input id="max_age" name="max_age" type="number" value={{max_age}}>
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="fame_rating_filter">Fame rating between</label>
+		            <input id="max_fame" name="max_fame" type="number" value={{max_fame}}> and 
+		            <input id="min_fame" name="min_fame" type="number" value={{min_fame}}>
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		      		From: 
+		      		<select name="location" id="max_location" class="form-control" id="location">
+		      		{% for city in all_locations %}
+		      			{% if city.user_city != 'Unknown' %}
+					  		<option>{{ city.user_city }}</option>
+					  	{% else %}
+					  		<option>{{ city.city }}</option>
+		      			{% endif %}
+		      		{% endfor %}
+					</select>
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="location_filter">Interests: </label>
+		            <div id="interest_holder"></div>
+		      	</div>
+		      	<div class="form-row">
+			      	{% for one in all_interests %}
+			      	<div class="form-group col-md-4">
+						<button class="search-interests btn btn-outline-warning my-2" value="{{ one.interest }}">#{{one.interest}} </button>
+					</div>
+					{% endfor %}
+				</div>
+	      		<button type="submit" class="btn btn-warning btn-block" id="age_filter">Apply</button>
+<!-- 	      	</form> -->
+	    </div>
+	    {% if users|length == 0 %}
+			<h1> We couldn't find anyone who would fit your preferences. We are sorry.</h1>
+		{% else %}
+		<div id="recommendations_users" class="row">
+		{% set sort_by = request.args.sort_by|default('id') %}
+		{% if request.args.sort_by == 'fame_rating' or request.args.sort_by == 'common'%}
+			{% for user in users|sort(attribute=sort_by, reverse=true) %}
+
+						{% if user.tags != '' %}
+							<div class="recommendation-element profile-card col-12 col-md-6 border-warning border-left mt-3">
+								<div class="mt-3 mr-5">
+									<img class="card-img float-left mt-2 ml-5 img-responsive" src="../{{user.profile_pic}}">
+									<div class="text-justify float-right mr-4 ">
+								    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
+								    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+										<p class="card-text card-age">Age: {{user.age}}</p>
+										<p class="card-text">Gender: {{user.gender}}</p>
+										<p class="card-text">Looking for: {{user.target_gender}}</p>
+										{% if user.user_city == "Unknown" %}
+											<p class="card-text">From: {{user.city}}</p>
+										{% else %}
+											<p class="card-text">From: {{user.user_city}}</p>
+										{% endif %}
+										{% if user.tags %}
+											<p class="card-text">Interests: {{user.tags}}</p>
+										{% endif %}
+									</div>
+								</div>
+							</div>
+						{% endif%}
+						
+
+			{% endfor %}
+		{% else %}
+			{% for user in users|sort(attribute=sort_by) %}
+						{% if user.tags != '' %}
+								<div class="recommendation-element profile-card col-12 col-md-6 border-warning border-left mt-3">
+									<div class="mt-3 mr-5">
+										<img class="card-img float-left mt-2 ml-5 img-responsive" src="../{{user.profile_pic}}">
+										<div class="text-justify float-right mr-4 ">
+									    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
+									    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+											<p class="card-text card-age" value="{{user.age}}">Age: {{user.age}}</p>
+											<p class="card-text">Gender: {{user.gender}}</p>
+											<p class="card-text">Looking for: {{user.target_gender}}</p>
+											{% if user.user_city == "Unknown" %}
+												<p class="card-text">From: {{user.city}}</p>
+											{% else %}
+												<p class="card-text">From: {{user.user_city}}</p>
+											{% endif %}
+											{% if user.tags %}
+												<p class="card-text">Interests: {{user.tags}}</p>
+											{% endif %}
+										</div>
+									</div>
+								</div>
+						{% endif%}
+
+			{% endfor %}
+		{% endif %}
+		</div>
+	{% endif %}
+
+{% endblock %}

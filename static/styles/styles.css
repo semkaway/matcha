@@ -1,0 +1,197 @@
+body, html {
+    height: 100%;
+    background-color: rgb(254, 255, 247);
+}
+
+nav {
+	background-color: rgba(236, 242, 193, 0.5);
+}
+
+
+h1 {
+	font-family: 'Oxygen', sans-serif;
+}
+
+p, a {
+	font-family: 'Source Sans Pro', sans-serif;
+	font-size: 1.3rem;
+}
+
+a {
+	color: rgb(255, 193, 7);
+}
+
+.nav-link {
+	color: black;
+}
+
+a:hover {
+	color: rgb(201, 152, 4);
+	text-decoration: none;
+}
+
+small { 
+    font-size: small;
+}
+
+.profile-pic-small {
+	width: 3vw;
+}
+
+.profile-card {
+/*	width: 40vw;
+*/	max-height: 35vh;
+	background-color: white;
+}
+
+.border-left {
+	border-left-width: 4px !important;
+}
+
+.card-img{
+/*	width: 40vw;
+*/	width: 13vw;
+}
+
+.profile-pic-big {
+	width: 19vw;
+}
+
+.welcome_page {
+	background-image: url("https://images.pexels.com/photos/347023/pexels-photo-347023.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");
+	height: 100%; 
+
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.login-box {
+	background-color: rgba(255, 255, 255, 0.6);
+}
+
+.info-input {
+	height: 9vh;
+}
+
+.btn-group-wrap {
+    text-align: center;
+    background-color: rgb(246, 247, 239);
+}
+
+div.btn-group {
+    margin: 0 auto; 
+    width: inherit;
+    display: inline-block;
+}
+
+.short input {
+	width: 4vw;
+}
+
+.short-1 input {
+	width: 8vw;
+}
+
+.profile-blocks {
+	background-color: rgb(246, 247, 239);
+}
+
+.textarea {
+	height: 13vh
+}
+
+.hidden-alert {
+	display: none;
+}
+
+.profile-header {
+/*	background-image: url("https://images.pexels.com/photos/255379/pexels-photo-255379.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");*/
+	background-image: url("https://images.pexels.com/photos/949587/pexels-photo-949587.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260"); 
+/*	background-image: url("https://images.pexels.com/photos/255377/pexels-photo-255377.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");*/
+	background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+	width: 100%;
+	height: 40vh;
+}
+
+.profile-header-blocks {
+/*	background-color: rgba(237, 239, 222, 0.6);*/
+background-color: rgba(201, 204, 185, 0.9);
+	margin-bottom: -3rem;
+	height: 20vh;
+
+}
+
+.profile-header-blocks p {
+	font-size: 1.5rem;
+}
+
+.long {
+	height: 60vh;
+	display: block;
+  	overflow: auto;
+}
+
+thead {
+	display: block;
+	background-color: rgb(236, 242, 193);
+}
+
+.header-text {
+	height: 8vh;
+}
+
+.gallery_pic {
+	height: 25vh;
+}
+
+.modal-body {
+	width: 100%;
+}
+
+.modal-body img {
+	width: 100%;
+}
+
+.modal-content {
+	width: 100%;
+}
+
+.modal-dialog {
+	max-width: 50vw;
+}
+
+.profile-info-block {
+	/*background-image: linear-gradient(to right, rgba(35, 137, 178, 0.3), rgba(199, 167, 28, 0.3));*/
+	background-color: white;
+}
+
+.profile-about-me-block {
+	background-image: linear-gradient(to right, rgba(35, 137, 178, 0.2), rgba(199, 167, 28, 0.2));
+}
+
+.profile-about-target-block {
+	background-image: linear-gradient(to left, rgba(35, 137, 178, 0.1), rgba(199, 167, 28, 0.1));
+}
+
+.chat {
+	height: 60vh;
+	display: block;
+  	overflow: auto;
+}
+
+.notification {
+	position: fixed;
+}
+
+.outer-div {
+	text-align: center;
+}
+
+.error-gif {
+	height: 45vh;
+	margin: 0 auto;
+	display: inline-block;
+}

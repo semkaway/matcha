@@ -1,0 +1,140 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+
+	<h1>There's plenty of fish in the sea</h1>
+	{% if users|length == 0 %}
+		<h1> We couldn't find anyone who would fit your preferences. We are sorry.</h1>
+	{% else %}
+	{% set min_age = request.args.min_age|default(20) %}
+	{% set max_age = request.args.max_age|default(50) %}
+	{% set min_fame = request.args.min_fame|default(0) %}
+	{% set max_fame = request.args.max_fame|default(1) %}
+	{% set max_location = request.args.max_location|default(10) %}
+	{% set max_interests = request.args.max_interests|default(1) %}
+		Sort by:
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'age' %} 
+		  		<input class="recommend-filter ml-2" type="checkbox" id="age" value="age" checked>
+		  	{% else %}
+		  		<input class="recommend-filter ml-2" type="checkbox" id="age" value="age">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="age">age</label>
+		</div>
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'location_value' %}
+		  		<input class="recommend-filter" type="checkbox" id="location_value" value="location_value" checked>
+		  	{% else %}
+		  		<input class="recommend-filter" type="checkbox" id="location_value" value="location_value">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="location_value">location</label>
+		</div>
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'fame_rating' %}
+				<input class="recommend-filter" type="checkbox" id="fame_rating" value="fame_rating" checked>
+		  	{% else %}
+		  		<input class="recommend-filter" type="checkbox" id="fame_rating" value="fame_rating">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="fame_rating">fame rating</label>
+		</div>
+		<div class="form-check form-check-inline">
+			{% if request.args.sort_by == 'common' %}
+		  		<input class="recommend-filter" type="checkbox" id="interesrts" value="common" checked>
+		  	{% else %}
+		  		<input class="recommend-filter" type="checkbox" id="interesrts" value="common">
+		  	{% endif %}
+		  	<label class="form-check-label ml-1" for="interesrts">common interests</label>
+		</div><br>
+		<div class="card p-2">
+			Filters:
+			<form>
+				<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="age_filter">Aged between</label>
+		            <input id="min_age" name="min_age" type="number" value={{min_age}}> and 
+		            <input id="max_age" name="max_age" type="number" value={{max_age}}>
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="fame_rating_filter">Fame rating between</label>
+		            <input id="max_fame" name="max_fame" type="number" value={{max_fame}}> and 
+		            <input id="min_fame" name="min_fame" type="number" value={{min_fame}}>
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="location_filter">Closer than </label>
+		            <input id="max_location" name="max_location" type="number" value={{max_location}}> km
+		      	</div>
+		      	<div class="form-group col-md-4 ml-3 mt-4 short">
+		            <label for="interests_filter">Shared interests no fewer than </label>
+		            <input id="max_interests" name="max_interests" type="number" value={{max_interests}}>
+		      	</div>
+	      		<button type="submit" class="btn btn-warning" id="age_filter">Apply</button>
+	      	</form>
+	    </div>
+		<div id="recommendations_users" class="row">
+		{% set sort_by = request.args.sort_by|default('id') %}
+		{% if request.args.sort_by == 'fame_rating' or request.args.sort_by == 'common'%}
+			{% for user in users|sort(attribute=sort_by, reverse=true) %}
+				{% if user.blocked == False %}
+					{% for interest in interests %}
+						{% if interest.recommended_user == user.id and user.common != 0%}
+							{% if user.common != 0%}
+								<div class="recommendation-element profile-card col-12 col-md-6 border-warning border-left mt-3">
+									<div class="mt-3 mr-5">
+										<img class="card-img float-left mt-2 ml-5 img-responsive" src="../{{user.profile_pic}}">
+										<div class="text-justify float-right mr-4 ">
+									    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
+									    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+											<p class="card-text card-age">Age: {{user.age}}</p>
+											<p class="card-text">Gender: {{user.gender}}</p>
+											<p class="card-text">Looking for: {{user.target_gender}}</p>
+											{% if user.user_city == "Unknown" %}
+												<p class="card-text">From: {{user.city}}</p>
+											{% else %}
+												<p class="card-text">From: {{user.user_city}}</p>
+											{% endif %}
+												<p class="card-text card-interests">Common interests: {{user.common}}</p>
+												<p class="card-text">Interests: {{user.interest}}</p>
+										</div>
+									</div>
+								</div>
+							{% endif %}
+						{% endif %}
+					{% endfor %}
+				{% endif %}
+			{% endfor %}
+		{% else %}
+			{% for user in users|sort(attribute=sort_by) %}
+				{% if user.blocked == False %}
+					{% for interest in interests %}
+						{% if interest.recommended_user == user.id %}
+							{% if interest.recommended_user == user.id %}
+								{% if user.common != 0 %}
+									<div class="recommendation-element profile-card col-12 col-md-6 border-warning border-left mt-3">
+										<div class="mt-3 mr-5">
+											<img class="card-img float-left mt-2 ml-5 img-responsive" src="../{{user.profile_pic}}">
+											<div class="text-justify float-right mr-4 ">
+										    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
+										    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+												<p class="card-text card-age" value="{{user.age}}">Age: {{user.age}}</p>
+												<p class="card-text">Gender: {{user.gender}}</p>
+												<p class="card-text">Looking for: {{user.target_gender}}</p>
+												{% if user.user_city == "Unknown" %}
+													<p class="card-text">From: {{user.city}}</p>
+												{% else %}
+													<p class="card-text">From: {{user.user_city}}</p>
+												{% endif %}
+													<p class="card-text">Common interests: {{user.common}}</p>
+													<p class="card-text">Interests: {{user.interest}}</p>
+											</div>
+										</div>
+									</div>
+								{% endif %}
+							{% endif %}
+						{% endif %}
+					{% endfor %}
+				{% endif %}
+			{% endfor %}
+		{% endif %}
+		</div>
+	{% endif %}
+
+{% endblock %}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		img {
+			max-width: 40vw;
+		}
+
+		button {
+			height: 5vh;
+			width: 12vw;
+			margin: 1vh;
+		}
+
+		a {
+			text-transform: uppercase;
+			text-decoration: none;
+			color: black;
+		}
+	</style>
+</head>
+<body>
+	<h1>Hello, {{arguments.my_username}},</h1>
+	<p><a href="{{url_for('profile', username=arguments.who_checked, _external = True)}}">{{ arguments.who_checked }}</a> has just checked your profile!</p>
+	<p>All the best,</p>
+	<p>Matcha team</p>
+
+</body>
+</html>
