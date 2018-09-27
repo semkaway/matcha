@@ -1,0 +1,84 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+{% for user in users %}
+	<div class="user" hidden>
+		<p class="name">{{user.name}}</p>
+		<p class="last_name">{{user.last_name}}</p>
+		<p class="username">{{user.username}}</p>
+		<p class="profile_pic">{{user.profile_pic}}</p>
+		<p class="latitude">{{user.latitude}}</p>
+		<p class="longitude">{{user.longitude}}</p>
+	</div>
+{% endfor %}
+<div class="outer-div">
+	<div id="map" class="mt-5"></div>
+</div>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbdW05TRFweVSKyzDODNSxm-5rwM6NGCE&callback=initMap"
+        async defer></script>
+	<script>
+
+		var users = $('.user');
+
+		var markers = []
+
+		users.each(function() {
+			markers.push(
+			{
+				coords:{lat: parseFloat($('.latitude', this).text()), lng: parseFloat($('.longitude', this).text())},
+          		iconImage:'https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png',
+          		content:'<img src="'+$('.profile_pic', this).text()+'" style="width:4vw;"><br><a href="profile/'+$('.username', this).text()+'"">'+$('.name', this).text()+" "+$('.last_name', this).text()+'</a>'
+			})
+		})
+
+		var options = {
+	        zoom: 10,
+	        center:{lat: 50.4501, lng: 30.5234}
+	      }
+
+		function initMap() {
+
+	        // Create a map object and specify the DOM element
+	        // for display.
+	        var map = new google.maps.Map($('#map')[0], options);
+
+	        // Create a marker and set its position.
+	        
+	         for(var i = 0;i < markers.length;i++){
+	        // Add marker
+
+		        addMarker(markers[i]);
+		    }
+
+		    function addMarker(props){
+		    	console.log(props.coords)
+		        var marker = new google.maps.Marker({
+		        	position:props.coords,
+		          	map:map,
+		        });
+
+		        // Check for customicon
+		        if(props.iconImage){
+		          // Set icon image
+		          marker.setIcon(props.iconImage);
+		        }
+
+		        // Check content
+		        if(props.content){
+		          var infoWindow = new google.maps.InfoWindow({
+		            content:props.content
+		          });
+
+		          marker.addListener('click', function(){
+		            infoWindow.open(map, marker);
+		          });
+		        }
+		    }
+  		}
+
+		console.log(markers)
+	</script>
+	<!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbdW05TRFweVSKyzDODNSxm-5rwM6NGCE&callback=initMap"
+        async defer></script> -->
+	
+{% endblock %}

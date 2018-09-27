@@ -1,0 +1,53 @@
+<nav class="navbar navbar-expand-md">
+  <a class="navbar-brand mb-0 h1" href="/">Matcha</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="container-fluid collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home</a>
+      </li>
+    </ul>
+    {% if session.logged_in %}
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/recommendations">Recommendations</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="/advanced-search">Search</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="/map">Map</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="/chats">Chats</a>
+      </li>
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li class="nav-item dropdown">
+        <input id="current_user_id" value="{{session['id']}}" hidden>
+        <input id="current_user" value="{{session['username']}}" hidden>
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="../{{ session['profile_pic'] }}" class="rounded-circle border border-warning profile-pic-small"> </a>
+        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="/edit">Edit profile</a>
+          <a class="dropdown-item" href="/profile/{{session['username']}}">Preview</a>
+          <a class="dropdown-item" href="/visit-history">Visit history</a>
+          <a class="dropdown-item" href="/likes">Likes</a>
+          <a class="dropdown-item" href="/details">Account details</a>
+          <a class="dropdown-item" href="/settings">Settings</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="/logout">Log out</a>
+        </div>
+      </li>
+    </ul>
+    {% else %}
+    <ul class="nav navbar-nav nav-item navbar-right">
+      <li class="nav-item active">
+        <a class="nav-link" href="/login">Log in</a>
+      </li>
+    </ul>
+    {% endif %}
+  </div>
+</nav>

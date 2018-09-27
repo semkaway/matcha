@@ -42,8 +42,8 @@ s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 config = {
 	'host' : 'localhost',
-  	'user' : 'test',
-  	'password' : 'test',
+	'user' : 'test',
+	'password' : 'test',
 }
 
 mydb = mysql.connector.connect(**config)
@@ -89,6 +89,8 @@ def get_gender(user_demands):
 
 def get_users(sort, sort1, request, my_user_demands):
 	cur = mydb.cursor(dictionary=True, buffered=True)
+
+	app.logger.info(my_user_demands)
 
 	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
 	notifications = cur.fetchall()
@@ -140,8 +142,8 @@ def get_users(sort, sort1, request, my_user_demands):
 			cur.execute(sort1, (session['id'], target_gender, my_user_demands['min_age'], my_user_demands['max_age'],
 							my_user_demands['max_fame'], my_user_demands['min_fame'], user_location, ))
 	elif request == 'search':
-		cur.execute(sort, (my_user_demands['min_age'], my_user_demands['max_age'],
-							my_user_demands['max_fame'], my_user_demands['min_fame'], my_user_demands['max_location'], my_user_demands['max_location'],))
+		cur.execute(sort, (int(my_user_demands['min_age']), int(my_user_demands['max_age']),
+							float(my_user_demands['max_fame']), float(my_user_demands['min_fame']), my_user_demands['max_location'], my_user_demands['max_location'],))
 		my_users = cur.fetchall()
 
 		app.logger.info(my_users)
@@ -176,7 +178,7 @@ def get_users(sort, sort1, request, my_user_demands):
 				if user['tags'] == "":
 					my_users.remove(user)
 
-			for user in users:
+			for user in my_users:
 				for block in blocked:
 					if user['id'] == block['user_id']:
 						user['blocked'] = True
@@ -405,14 +407,14 @@ def index(page):
 	cur.close()
 	if request.method == 'POST':
 		users = "none"
-	 	username = request.form.get('username', False)
-	 	name = request.form.get('name', False)
-	 	lastname = request.form.get('lastname', False)
-	 	email = request.form.get('email', False)
-	 	password_check = request.form.get('password', False)
-	 	confirm = request.form.get('confirm', False)
+		username = request.form.get('username', False)
+		name = request.form.get('name', False)
+		lastname = request.form.get('lastname', False)
+		email = request.form.get('email', False)
+		password_check = request.form.get('password', False)
+		confirm = request.form.get('confirm', False)
 
-	 	cur = mydb.cursor(dictionary=True, buffered=True)
+		cur = mydb.cursor(dictionary=True, buffered=True)
 		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (username,))
 		result = cur.rowcount
 		cur.close()
@@ -424,21 +426,21 @@ def index(page):
 
 		if result != 0:
 			message = "User with this name already exists"
-	 		return render_template('home.html', page='index', error=message)
+			return render_template('home.html', page='index', error=message)
 
-	 	if result2 != 0:
+		if result2 != 0:
 			message = "User with this email already exists"
-	 		return render_template('home.html', page='index', error=message)
+			return render_template('home.html', page='index', error=message)
 
-	 	if validate_email(email) == False:
-	 		message = "Wrong format email"
-	 		return render_template('home.html', error=message)
-	 	if validate_password(password_check) == False:
-	 		message = "Your password should contain at least one number and one uppercase letter"
-	 		return render_template('home.html', error=message)
-	 	if confirm_password(password_check, confirm) == False:
-	 		message = "Passwords don't match"
-	 		return render_template('home.html', error=message)
+		if validate_email(email) == False:
+			message = "Wrong format email"
+			return render_template('home.html', error=message)
+		if validate_password(password_check) == False:
+			message = "Your password should contain at least one number and one uppercase letter"
+			return render_template('home.html', error=message)
+		if confirm_password(password_check, confirm) == False:
+			message = "Passwords don't match"
+			return render_template('home.html', error=message)
 		
 		password = sha256_crypt.encrypt(str(password_check))
 
@@ -526,8 +528,6 @@ def advanced_search():
 		my_user_demands['max_location'] = "Kyiv"
 		my_user_demands['max_interests'] = ""
 
-	app.logger.info(my_user_demands)
-
 	sort = '''SELECT matcha.users.id, matcha.users.name, matcha.users.last_name, matcha.users.username, matcha.users.logout,
 				matcha.users.fame_rating, matcha.users_pictures.profile_pic, matcha.users_basic_info.age,
 				matcha.users_basic_info.gender, matcha.users_basic_info.target_gender, matcha.users_location.city, matcha.users_location.latitude,
@@ -539,8 +539,8 @@ def advanced_search():
 				AND matcha.users_basic_info.age <= %s
 				AND matcha.users.fame_rating <= %s
 				AND matcha.users.fame_rating >= %s
-				AND (matcha.users_location.city = 'Unknown' AND matcha.users_location.user_city = %s)
-				OR (matcha.users_location.city = %s AND matcha.users_location.user_city = 'Unknown')'''
+				AND ((matcha.users_location.city = 'Unknown' AND matcha.users_location.user_city = %s)
+				OR (matcha.users_location.city = %s AND matcha.users_location.user_city = 'Unknown'))'''
 	sort1 = ""
 	results = get_users(sort, sort1, my_request, my_user_demands)
 	cur = mydb.cursor(dictionary=True, buffered=True)
@@ -550,6 +550,17 @@ def advanced_search():
 	all_locations = cur.fetchall()
 	cur.close()
 	return render_template('search.html', users=results['users'], interests_id=results['interests'], all_interests=all_interests, all_locations=all_locations)
+
+@app.route('/map', methods=['GET', 'POST'])
+def map():
+	cur = mydb.cursor(buffered=True, dictionary=True)
+	cur.execute('''SELECT matcha.users.id, matcha.users.username, matcha.users.name, matcha.users.last_name,
+				matcha.users_location.latitude, matcha.users_location.longitude, matcha.users_pictures.profile_pic FROM matcha.users
+				INNER JOIN matcha.users_location ON matcha.users_location.user_id=matcha.users.id
+				INNER JOIN matcha.users_pictures ON matcha.users_pictures.user_id=matcha.users.id''')
+	users = cur.fetchall()
+	cur.close()
+	return render_template('map.html', users=users)
 
 @socketio.on('my event')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
@@ -911,12 +922,12 @@ def complete(token):
 @is_logged_out
 def unconfirmed():
 	if request.method == 'POST':
-	 	email = request.form.get('email', False)
-	 	if validate_email(email) == False:
-	 		message = "Wrong format email"
-	 		return render_template('home.html', error=message)
+		email = request.form.get('email', False)
+		if validate_email(email) == False:
+			message = "Wrong format email"
+			return render_template('home.html', error=message)
 
-	 	cur = mydb.cursor(dictionary=True, buffered=True)
+		cur = mydb.cursor(dictionary=True, buffered=True)
 		cur.execute("SELECT * FROM matcha.users WHERE email = %s", (email,))
 		result = cur.rowcount
 		if result > 0:
@@ -945,12 +956,12 @@ def unconfirmed():
 @is_logged_out
 def password_reset():
 	if request.method == 'POST':
-	 	email = request.form.get('email', False)
-	 	if validate_email(email) == False:
-	 		message = "Wrong format email"
-	 		return render_template('home.html', error=message)
+		email = request.form.get('email', False)
+		if validate_email(email) == False:
+			message = "Wrong format email"
+			return render_template('home.html', error=message)
 
-	 	cur = mydb.cursor(dictionary=True, buffered=True)
+		cur = mydb.cursor(dictionary=True, buffered=True)
 		cur.execute("SELECT * FROM matcha.users WHERE email = %s", (email,))
 		result = cur.rowcount
 		if result > 0:
@@ -985,16 +996,16 @@ def password_reset_finish(token):
 
 	if request.method == 'POST':
 		password_check = request.form.get('password', False)
-	 	confirm = request.form.get('confirm', False)
+		confirm = request.form.get('confirm', False)
 
 		if validate_password(password_check) == False:
-	 		message = "Your password should contain at least one number and one uppercase letter"
-	 		return render_template('password_reset_finish.html', error=message)
-	 	if confirm_password(password_check, confirm) == False:
-	 		message = "Passwords don't match"
-	 		return render_template('password_reset_finish.html', error=message)
+			message = "Your password should contain at least one number and one uppercase letter"
+			return render_template('password_reset_finish.html', error=message)
+		if confirm_password(password_check, confirm) == False:
+			message = "Passwords don't match"
+			return render_template('password_reset_finish.html', error=message)
 
-	 	password = sha256_crypt.encrypt(str(password_check))
+		password = sha256_crypt.encrypt(str(password_check))
 		cur = mydb.cursor()
 		query = "UPDATE matcha.users SET password = %s WHERE email = %s"
 		cur.execute(query, (password, email, ))
@@ -1878,7 +1889,7 @@ def delete_pic():
 
 	if os.path.exists(request.form['picture']):
 		app.logger.info("pic exists")
-  		os.remove(request.form['picture'])
+		os.remove(request.form['picture'])
 	return "OK"
 
 
@@ -1962,19 +1973,19 @@ def save_settings():
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+	return render_template('404.html'), 404
 
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template('403.html'), 403
+	return render_template('403.html'), 403
 
 @app.errorhandler(410)
 def page_gone(e):
-    return render_template('410.html'), 410
+	return render_template('410.html'), 410
 
 @app.errorhandler(500)
 def server_error(e):
-    return render_template('500.html'), 500
+	return render_template('500.html'), 500
 
 if __name__ == '__main__':
 	socketio.run(app, debug=True)
