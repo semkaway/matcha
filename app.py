@@ -44,6 +44,7 @@ config = {
 	'host' : 'localhost',
 	'user' : 'test',
 	'password' : 'test',
+	'charset' : 'utf8mb4'
 }
 
 mydb = mysql.connector.connect(**config)
@@ -350,7 +351,8 @@ def index(page):
 	cur.execute('''CREATE TABLE IF NOT EXISTS matcha.messages(
 					sender_id INT(11),
 					recipient_id INT(11),
-					message TEXT)''')
+					message TEXT,
+					msg_sent DATETIME) DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci''')
 	cur.execute('''CREATE TABLE IF NOT EXISTS matcha.notification_box(
 					current_user_id INT(11),
 					other_user_id INT(11),
@@ -479,7 +481,9 @@ def index(page):
 		while pages_temp <= num_pages:
 			pages.append(pages_temp)
 			pages_temp += 1
-		cur.execute('''SELECT * FROM matcha.users
+		cur.execute('''SELECT matcha.users.id, matcha.users.username, matcha.users.name, matcha.users.last_name, matcha.users.logout, matcha.users_pictures.profile_pic,
+						matcha.users_basic_info.gender, matcha.users_basic_info.target_gender, matcha.users_basic_info.age, matcha.users.fame_rating,
+						matcha.users_location.city,	matcha.users_location.user_city	FROM matcha.users
 						INNER JOIN matcha.users_pictures ON matcha.users_pictures.user_id=matcha.users.id
 						INNER JOIN matcha.users_basic_info ON matcha.users_basic_info.user_id=matcha.users.id
 						INNER JOIN matcha.users_location ON matcha.users_location.user_id=matcha.users.id
@@ -496,15 +500,10 @@ def index(page):
 			for block in blocked:
 				if user['id'] == block['user_id']:
 					user['blocked'] = True
-		age = []
-		for part in users:
-			cur.execute("SELECT TIMESTAMPDIFF(YEAR, '%s-%s-%s', CURDATE()) AS age", (part['bday_year'], part['bday_month'], part['bday_day'], ))
-			user_age = cur.fetchone()
-			age.append((part['user_id'], user_age))
 		cur.execute("SELECT * FROM matcha.users_location LIMIT %s, %s", (page * 10 - 10, 10, ))
 		location = cur.fetchall()
 		cur.close()
-		return render_template('home.html', page='index', pages=pages, users=users, age=age, location=location, blocked=blocked)
+		return render_template('home.html', page='index', pages=pages, users=users, location=location, blocked=blocked)
 	return render_template('home.html', page='index')
 
 # INDEX END
@@ -578,7 +577,7 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 			if int(json['sender_id']) == int(block['user_id']):
 				notify = False
 				json['message'] = 'false'
-		cur.execute("INSERT INTO matcha.messages(sender_id, recipient_id, message) VALUES (%s, %s, %s)", (json['sender_id'], user_id['id'], json['message'], ))
+		cur.execute("INSERT INTO matcha.messages(sender_id, recipient_id, message, msg_sent) VALUES (%s, %s, %s, NOW())", (json['sender_id'], user_id['id'], json['message'], ))
 		if notify == True:
 			if json['is_chats'] != 'chats':
 				cur.execute("INSERT INTO matcha.notification_box (current_user_id, other_user_id, message) VALUES(%s, %s, %s)", (user_id['id'], json['sender_id'], "you got a new message from "+json['sender_name'], ))
@@ -1379,13 +1378,13 @@ def profile(username):
 	session['notifications'] = notifications
 
 	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute('''SELECT *, DATE_FORMAT(logout, '%a, %H:%i') AS logout FROM
+	cur.execute('''SELECT matcha.users.id, matcha.users.name, matcha.users.last_name, matcha.users.username, DATE_FORMAT(logout, '%a, %H:%i') AS logout FROM
 				matcha.users WHERE username = %s''', (username, ))
 	data = cur.fetchone()
 	cur.close()
 
 	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users_pictures WHERE user_id = %s", (data['id'], ))
+	cur.execute('''SELECT * FROM matcha.users_pictures WHERE user_id = %s''', (data['id'], ))
 	pic = cur.fetchone()
 	cur.close()
 
@@ -1397,8 +1396,6 @@ def profile(username):
 	cur = temp_mydb.cursor(dictionary=True, buffered=True)
 	cur.execute("SELECT * FROM matcha.users_basic_info WHERE user_id = %s", (data['id'], ))
 	basic = cur.fetchone()
-	cur.execute("SELECT TIMESTAMPDIFF(YEAR, '%s-%s-%s', CURDATE()) AS age", (basic['bday_year'], basic['bday_month'], basic['bday_day'], ))
-	age = cur.fetchone()
 	cur.close()
 
 	cur = temp_mydb.cursor(dictionary=True, buffered=True)
@@ -1495,12 +1492,23 @@ def profile(username):
 	temp_mydb.commit()
 	cur.close()
 
+	cur = temp_mydb.cursor(dictionary=True, buffered=True)
+	cur.execute('''SELECT * FROM matcha.users_blocked WHERE (user_id = %s AND blocked_by_user_id = %s)''', (data['id'], session['id'], ))
+	i_blocked = cur.rowcount
+	if i_blocked == 1:
+		i_blocked = True
+	cur.execute('''SELECT * FROM matcha.users_blocked WHERE (user_id = %s AND blocked_by_user_id = %s)''', (session['id'], data['id'], ))
+	he_blocked = cur.rowcount
+	if he_blocked == 1:
+		he_blocked = True
+	cur.close()
+
 	temp_mydb.close()
 
-	return render_template('profile.html', fame_rating=fame_rating, data=data, pic=pic, basic=basic, age=age, appearance=appearance,
+	return render_template('profile.html', fame_rating=fame_rating, data=data, pic=pic, basic=basic, appearance=appearance,
 		lifestyle=lifestyle, background=background,
 		description=description, city=city,
-		country=country, district=district, interests=interests, my_interests=my_interests, likes=likes, mutual=mutual, photos=photos)
+		country=country, district=district, interests=interests, my_interests=my_interests, likes=likes, mutual=mutual, photos=photos, i_blocked=i_blocked, he_blocked=he_blocked)
 
 @app.route('/details', methods=['GET', 'POST'])
 @is_logged_in
@@ -1663,11 +1671,11 @@ def visit_history():
 
 	cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time
 					FROM matcha.users_visits WHERE user_id = %s
-					AND visit_time BETWEEN (NOW() - INTERVAL 7 DAY) AND NOW()''', (session['id'], ))
+					AND visit_time BETWEEN (NOW() - INTERVAL 3 DAY) AND NOW() ORDER BY visit_time ASC''', (session['id'], ))
 	visits = cur.fetchall()
 	cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time FROM
 				matcha.users_visits WHERE visit_id = %s
-				AND visit_time BETWEEN (NOW() - INTERVAL 7 DAY) AND NOW()''', (session['id'], ))
+				AND visit_time BETWEEN (NOW() - INTERVAL 3 DAY) AND NOW() ORDER BY visit_time ASC''', (session['id'], ))
 	i_visited = cur.fetchall()
 	cur.close()
 
@@ -1702,19 +1710,31 @@ def likes():
 	cur.execute('''SELECT *	FROM matcha.users_likes WHERE user_id = %s''', (session['id'], ))
 	likes = cur.fetchall()
 
+	cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
+	blocked = cur.fetchall()
+
+	for like in likes:
+		like['blocked'] = False
+
+	for likee in likes:
+		for block in blocked:
+			if like['user_id'] == block['blocked_by_user_id'] or like['user_id'] == block['user_id']:
+				like['blocked'] = True
+
 	recieved_likes = []
 	my_likes = []
 
 	for like in likes:
-		cur = mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("SELECT * FROM matcha.users WHERE id = %s", (like['like_id'], ))
-		value = cur.fetchone()
-		recieved_likes.append((value['username'], ))
-		cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (like['like_id'], session['id'], ))
-		mutual_like = cur.rowcount
-		if mutual_like == 1:
-			my_likes.append((value['username'], ))
-		cur.close()
+		if like['blocked'] == False:
+			cur = mydb.cursor(dictionary=True, buffered=True)
+			cur.execute("SELECT * FROM matcha.users WHERE id = %s", (like['like_id'], ))
+			value = cur.fetchone()
+			recieved_likes.append((value['username'], ))
+			cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (like['like_id'], session['id'], ))
+			mutual_like = cur.rowcount
+			if mutual_like == 1:
+				my_likes.append((value['username'], ))
+			cur.close()
 
 	return render_template("likes.html", recieved_likes=recieved_likes, my_likes=my_likes)
 
@@ -1791,6 +1811,16 @@ def block_user():
 	cur.close()
 	return jsonify({'success' : 'This user has been blocked. This page will not appear in your search again'})
 
+@app.route('/unblock-user', methods=['GET', 'POST'])
+def unblock_user():
+	cur = mydb.cursor(buffered=True, dictionary=True)
+	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
+	data = cur.fetchone()
+	cur.execute("DELETE FROM matcha.users_blocked WHERE user_id = %s AND blocked_by_user_id = %s", (data['id'], session['id'], ))
+	mydb.commit()
+	cur.close()
+	return jsonify({'success' : 'This user has been unblocked.'})
+
 @app.route('/check-mutual', methods=['GET', 'POST'])
 def check_mutual():
 	temp_mydb = mysql.connector.connect(**config)
@@ -1847,33 +1877,66 @@ def chats_empty():
 	cur.close()
 	return render_template("chats.html", users=users, messages="none", likes=likes, profiles=profiles)
 
-@app.route('/chats/<person>', methods=['GET', 'POST'])
-def chats(person):
-	cur = mydb.cursor(buffered=True, dictionary=True)
+@app.route('/chats/<person>', defaults={'page': 1}, methods=['GET', 'POST'])
+@app.route('/chats/<person>/<int:page>')
+def chats(person, page):
+
+	msg_mydb = mysql.connector.connect(**config)
+
+	cur = msg_mydb.cursor(buffered=True, dictionary=True)
 
 	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
 	notifications = cur.fetchall()
+	cur.close()
 
 	session['notifications'] = notifications
 
+	cur = msg_mydb.cursor(buffered=True, dictionary=True)
 	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (person, ))
 	uid = cur.fetchone()
+	cur.close()
+
+	cur = msg_mydb.cursor(buffered=True, dictionary=True)
 	cur.execute("SELECT * FROM matcha.users_likes WHERE (user_id = %s AND like_id = %s) OR (user_id = %s AND like_id = %s)", (uid['id'], session['id'], session['id'], uid['id'], ))
 	num_mutual = cur.rowcount
-	app.logger.info(num_mutual)
+	cur.close()
+
+	cur = msg_mydb.cursor(buffered=True, dictionary=True)
 	cur.execute('''SELECT * FROM matcha.users_blocked WHERE (user_id = %s AND blocked_by_user_id = %s) OR (user_id = %s AND blocked_by_user_id = %s)''', (uid['id'], session['id'], session['id'], uid['id'], ))
 	blocked = cur.rowcount
-	app.logger.info(cur.rowcount)
+	cur.close()
 	if num_mutual == 2 and blocked == 0:
-		cur.execute("SELECT * FROM matcha.users")
+		cur = msg_mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("SELECT matcha.users.id, matcha.users.username FROM matcha.users")
 		users = cur.fetchall()
-		cur.execute("SELECT * FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s) OR (sender_id = %s AND recipient_id = %s)",
+		cur.close()
+
+		cur = msg_mydb.cursor(buffered=True, dictionary=True)
+		cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
+						FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s)
+						OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC''',
 					(session['id'], uid['id'], uid['id'], session['id'], ))
+		num_pages = cur.rowcount / 15
+		if cur.rowcount % 15 != 0:
+			num_pages = cur.rowcount / 15 + 1
+		pages = []
+		pages_temp = 1
+		while pages_temp <= num_pages:
+			pages.append(pages_temp)
+			pages_temp += 1
+		cur.close()
+
+		cur = msg_mydb.cursor(buffered=True, dictionary=True)
+		cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
+						FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s) 
+						OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC LIMIT %s, %s''',
+					(session['id'], uid['id'], uid['id'], session['id'], page * 15 - 15, 15, ))
 		messages = cur.fetchall()
 		cur.close()
-		return render_template("chats.html", messages=messages, users=users)
+		msg_mydb.close()
+		return render_template("chats.html", messages=messages, users=users, pages=pages, uid=uid)
 	else:
-		cur.close()
+		msg_mydb.close()
 		return redirect(url_for("chats_empty"))
 
 @app.route('/delete-pic', methods=['GET', 'POST'])

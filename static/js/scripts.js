@@ -540,8 +540,7 @@ $(document).ready(function()  {
 		});
 	});
 
-	$('#block-user').click(function() {
-
+	$(document).on('click', '#block-user', function() {
 		$.ajax({
 			data : {
 				username : location[2]
@@ -563,6 +562,30 @@ $(document).ready(function()  {
 			}
 
 			setTimeout(function(){ window.location.replace("/"); }, 2000);
+		});
+	});
+
+	$(document).on('click', '#unblock-user', function() {
+
+		$.ajax({
+			data : {
+				username : location[2]
+			},		
+			type: 'POST',
+			url: '/unblock-user',
+		})
+		.done(function(data) {
+
+			if (data.error) {
+				$('#errorAlertReport').text(data.error).show();
+				$('#successAlertReport').hide();
+			}
+			else {
+				$('#successAlertReport').text(data.success).show();
+				$('#errorAlertReport').hide();
+			}
+
+			$("#blocking").html('<div id="block-user" class="btn btn-info">BLOCK USER</div>')
 		});
 	});
 
@@ -624,8 +647,22 @@ $(document).ready(function()  {
 
 	socket.on( 'my response', function( msg ) {
 	var current_user = $('#current_user').val();
+	var d = new Date();
+	var time = d.toLocaleTimeString('en-GB', {weekday: 'short', hour: '2-digit', minute:'2-digit'});
 	if( typeof msg.message !== 'undefined' && msg.message != 'false' && ((msg.recieve_name == current_user) || (msg.sender_name == current_user))) {
-	    $( 'div.message_holder' ).append('<div><b>'+msg.sender_name+': </b>'+msg.message+'</div>' )
+	    if (msg.sender_name == current_user) {
+		    $( 'div.message_holder' ).prepend('<div class="m-1">'+
+		    										'<div class="float-left text-message"><b class="text-success">'+msg.sender_name+': </b>'+msg.message+'</div>'+
+			    									'<div class="float-right text-lowercase text-muted">'+time+'</div>'+
+			    									'<div class="clearfix"></div>'+
+		    									'</div>' )
+		} else {
+			$( 'div.message_holder' ).prepend('<div class="m-1">'+
+		    										'<div class="float-left text-message"><b class="text-info">'+msg.sender_name+': </b>'+msg.message+'</div>'+
+			    									'<div class="float-right text-lowercase text-muted">'+time+'</div>'+
+			    									'<div class="clearfix"></div>'+
+		    									'</div>' )
+		}
 	    if (msg.recieve_name == current_user && location[1] != 'chats') {
 	    	$( '#notification-box' ).append('<div class="alert alert-success show fade alert-dismissible float-right" role="alert">'+msg.notification+'<button type="button" class="close" data-dismiss="alert" aria-label="Close" value="'+msg.notification+'"><span aria-hidden="true">&times;</span><input value="'+msg.notification+'" hidden></button></div>' )
 	    }
@@ -637,7 +674,6 @@ $(document).ready(function()  {
         var current_user = $('#current_user').val();
         e.preventDefault()
         let user_input =  $( '.message' ).val()
-        console.log(user_input)
         socket.emit( 'my event', {
         	sender_name : current_user,
         	sender_id : current_user_id,
@@ -646,7 +682,7 @@ $(document).ready(function()  {
             notification : "you got a new message from "+current_user,
             is_chats : location[1]
         })
-        $( '.message' ).val( '' ).focus()
+        $('.emoji-wysiwyg-editor').html('').focus()
     })
 
 	$(document).on('click', '.close', function() {
@@ -728,6 +764,13 @@ $(document).ready(function()  {
 
 		$(this).remove();
 	});
+
+	window.emojiPicker = new EmojiPicker({
+		emojiable_selector: '[data-emojiable=true]',
+		assetsPath: '/static/img',
+		popupButtonClasses: 'fa fa-smile-o'
+	});
+	window.emojiPicker.discover();
 
 
 });

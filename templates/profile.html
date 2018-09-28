@@ -24,7 +24,15 @@
 						{% endif %}
 					</div><br>
 				{% endif %}
-				<div id="block-user" class="btn btn-danger">BLOCK USER</div>
+				<div id="blocking" class="mr-2 mt-2">
+					{% if i_blocked == True %}
+						<div id="unblock-user" class="btn btn-info">UNBLOCK USER</div>
+					{% elif he_blocked == True %}
+						<div id="blocked-user" class="btn btn-info">THIS USER BLOCKED YOU</div>
+					{% else %}
+						<div id="block-user" class="btn btn-info">BLOCK USER</div>
+					{% endif %}
+				</div>
 		    {% endif %}
 		</div>
 	</div>
@@ -37,7 +45,7 @@
 		    <div class="col-12 col-md-6 mt-5">
 		    	<div class="profile-header-blocks rounded mr-1 p-2">
 			      <p class="text-uppercase text-dark">Gender: <span class="text-white">{{ basic.gender}}</span></p>
-			      <p class="text-uppercase text-dark">Age: <span class="text-white">{{ age.age }}</span></p>
+			      <p class="text-uppercase text-dark">Age: <span class="text-white">{{ basic.age }}</span></p>
 			      <p class="text-uppercase text-dark">Location: <span class="text-white">{{ city }}</span></p>
 			    </div>
 		    </div>
