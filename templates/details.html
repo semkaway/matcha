@@ -10,19 +10,19 @@
 	<div class="form-row">
 	    <div class="form-group col-md-6">
 	      <label for="name">Name</label>
-	      <input name="name" type="text" class="form-control" id="name" placeholder="Name" pattern="[a-zA-Z0-9_-]{1,12}" title="must be alphanumeric in 1-12 chars" value="{{ details.name }}">
+	      <input name="name" type="text" class="form-control" id="name" placeholder="Name" pattern="[a-zA-Z0-9_-]{1,12}" title="must be alphanumeric in 1-12 chars" value="{{ details.name }}" required>
 	    </div>
 	    <div class="form-group col-md-6">
 	      <label for="lastname">Last name</label>
-	      <input name="lastname" type="text" class="form-control" id="lastname" placeholder="Last name" pattern="[a-zA-Z0-9_-]{1,50}" title="must be alphanumeric in 1-50 chars" value="{{ details.last_name }}">
+	      <input name="lastname" type="text" class="form-control" id="lastname" placeholder="Last name" pattern="[a-zA-Z0-9_-]{1,50}" title="must be alphanumeric in 1-50 chars" value="{{ details.last_name }}" required>
 	    </div>
 	    <div class="form-group col-md-6">
 	      <label for="username">Username</label>
-	      <input name="username" type="text" class="form-control" id="username" placeholder="Username" pattern="[a-zA-Z0-9_-]{3,12}" title="must be alphanumeric in 3-12 chars" value="{{ details.username }}">
+	      <input name="username" type="text" class="form-control" id="username" placeholder="Username" pattern="[a-zA-Z0-9_-]{3,12}" title="must be alphanumeric in 3-12 chars" value="{{ details.username }}" required>
 	    </div>
 	    <div class="form-group col-md-6">
 	      <label for="email">Email</label>
-	      <input name="email" type="email" class="form-control" id="email" placeholder="Email" pattern="[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,4}$" minlength="5" value="{{ details.email }}">
+	      <input name="email" type="email" class="form-control" id="email" placeholder="Email" pattern="[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,4}$" minlength="5" value="{{ details.email }}" required>
 	    </div>
 	</div>
 	<button type="submit" class="btn btn-warning btn-lg btn-block">Submit changes</button>

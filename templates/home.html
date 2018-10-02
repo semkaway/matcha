@@ -16,15 +16,19 @@
 							<div class="col-12 col-md-6">
 								<div class="card-text text-justify mt-3">
 							    	<a href="/profile/{{user.username}}" class="text-uppercase text-center">{{user.name}} {{user.last_name}}</a>{% if user.logout == None %} <small class="text-success"> ONLINE </small>{% endif %}<br>
-							    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
-									<p class="card-text">Age: {{user.age}}</p>
-									<p class="card-text">Gender: {{user.gender}}</p>
-									<p class="card-text">Looking for: {{user.target_gender}}</p>
-									{% if user.user_city == "Unknown" %}
-										<p class="card-text">From: {{user.city}}</p>
-									{% else %}
-										<p class="card-text">From: {{user.user_city}}</p>
-									{% endif %}
+							    	<div class="card-text text-justify mt-3">
+								    	<div class="d-none d-lg-block">
+									    	<h5 class="text-muted">Fame rating: {{user.fame_rating}}</h5 class="text-muted">
+											<p>Age: {{user.age}}</p>
+											<p>Gender: {{user.gender}}</p>
+											<p>Looking for: {{user.target_gender}}</p>
+											{% if user.user_city == "Unknown" %}
+												<p>From: {{user.city}}</p>
+											{% else %}
+												<p>From: {{user.user_city}}</p>
+											{% endif %}
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>

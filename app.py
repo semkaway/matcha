@@ -8,6 +8,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from passlib.hash import sha256_crypt
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import RequestEntityTooLarge
 import os
 from PIL import Image
 from flask_dropzone import Dropzone
@@ -50,6 +51,7 @@ config = {
 mydb = mysql.connector.connect(**config)
 
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 def allowed_file(filename):
 	return '.' in filename and \
@@ -77,7 +79,7 @@ def is_logged_out(f):
 			return f(*args, **kwargs)
 		else:
 			flash('You are already logged in', 'danger')
-			return redirect(url_for('edit'))
+			return redirect(url_for('profile', username=session['username']))
 	return wrap
 
 def get_gender(user_demands):
@@ -442,7 +444,7 @@ def index(page):
 			return render_template('home.html', error=message)
 		if confirm_password(password_check, confirm) == False:
 			message = "Passwords don't match"
-			return render_template('home.html', error=message)
+			return render_template('home.html', error=message, page="index")
 		
 		password = sha256_crypt.encrypt(str(password_check))
 
@@ -474,6 +476,8 @@ def index(page):
 		cur = mydb.cursor(dictionary=True, buffered=True)
 		cur.execute("SELECT * FROM matcha.users WHERE matcha.users.id != %s", (session['id'], ))
 		num_pages = cur.rowcount / 10
+		if page > num_pages:
+			return redirect(url_for('index'))
 		if cur.rowcount % 10 != 0:
 			num_pages = cur.rowcount / 10 + 1
 		pages = []
@@ -509,16 +513,31 @@ def index(page):
 # INDEX END
 
 @app.route('/advanced-search', methods=['GET', 'POST'])
+@is_logged_in
 def advanced_search():
 	my_request = 'search'
 	my_user_demands = {}
-	if request.args.get('min_age'):
+	if request.args.get('min_age') != None and request.args.get('max_age') != None and request.args.get('min_fame')  != None and request.args.get('max_fame')  != None and request.args.get('max_location')  != None and request.args.get('max_interests') != None:
 		my_user_demands['min_age'] = request.args.get('min_age')
 		my_user_demands['max_age'] = request.args.get('max_age')
 		my_user_demands['min_fame'] = request.args.get('min_fame')
 		my_user_demands['max_fame'] = request.args.get('max_fame')
 		my_user_demands['max_location'] = request.args.get('max_location')
 		my_user_demands['max_interests'] = request.args.get('max_interests')
+		if my_user_demands['min_age'] == "" or my_user_demands['min_age'].isnumeric() == False:
+			my_user_demands['min_age'] = 20
+
+		if my_user_demands['max_age'] == "" or my_user_demands['max_age'].isnumeric() == False:
+			my_user_demands['max_age'] = 50
+
+		if my_user_demands['max_fame'] == "" or my_user_demands['max_fame'].isnumeric() == False:
+			my_user_demands['max_fame'] = 1
+
+		if my_user_demands['min_fame'] == "" or my_user_demands['min_fame'].isnumeric() == False:
+			my_user_demands['min_fame'] = 0
+
+		if my_user_demands['max_location'] == "":
+			my_user_demands['max_location'] = "Kyiv"
 	else:
 		my_user_demands['min_age'] = 20
 		my_user_demands['max_age'] = 50
@@ -526,6 +545,13 @@ def advanced_search():
 		my_user_demands['max_fame'] = 1
 		my_user_demands['max_location'] = "Kyiv"
 		my_user_demands['max_interests'] = ""
+
+	cur = mydb.cursor(dictionary=True, buffered=True)
+	cur.execute("SELECT * FROM matcha.users_location WHERE city = %s OR user_city = %s", (my_user_demands['max_location'], my_user_demands['max_location'], ))
+	total = cur.rowcount
+	if total == 0:
+		my_user_demands['max_location'] = "Kyiv"
+	cur.close()
 
 	sort = '''SELECT matcha.users.id, matcha.users.name, matcha.users.last_name, matcha.users.username, matcha.users.logout,
 				matcha.users.fame_rating, matcha.users_pictures.profile_pic, matcha.users_basic_info.age,
@@ -551,6 +577,7 @@ def advanced_search():
 	return render_template('search.html', users=results['users'], interests_id=results['interests'], all_interests=all_interests, all_locations=all_locations)
 
 @app.route('/map', methods=['GET', 'POST'])
+@is_logged_in
 def map():
 	cur = mydb.cursor(buffered=True, dictionary=True)
 	cur.execute('''SELECT matcha.users.id, matcha.users.username, matcha.users.name, matcha.users.last_name,
@@ -564,38 +591,39 @@ def map():
 @socketio.on('my event')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
 	if 'recieve_name' in json:
-		s_mydb = mysql.connector.connect(**config)
+		if json['message'] != "":
+			app.logger.info("yo")
+			s_mydb = mysql.connector.connect(**config)
+			notify = True
 
-		notify = True
-
-		cur = s_mydb.cursor(buffered=True, dictionary=True)
-		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (json['recieve_name'], ))
-		user_id = cur.fetchone()
-		cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (user_id['id'], ))
-		blocked = cur.fetchall()
-		for block in blocked:
-			if int(json['sender_id']) == int(block['user_id']):
-				notify = False
-				json['message'] = 'false'
-		cur.execute("INSERT INTO matcha.messages(sender_id, recipient_id, message, msg_sent) VALUES (%s, %s, %s, NOW())", (json['sender_id'], user_id['id'], json['message'], ))
-		if notify == True:
-			if json['is_chats'] != 'chats':
-				cur.execute("INSERT INTO matcha.notification_box (current_user_id, other_user_id, message) VALUES(%s, %s, %s)", (user_id['id'], json['sender_id'], "you got a new message from "+json['sender_name'], ))
-			cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (user_id['id'], ))
-			settings = cur.fetchone()
-			if settings['message'] == 1:
-				theme = "Someone wrote you a message!"
-				arguments = {
-					"who_sent" : json['sender_id'],
-					"my_username" : json['recieve_name'],
-					"message" : json['message'],
-				}
-				send_message(app, theme, user_id['email'], 'message', mail, arguments)
-		s_mydb.commit()
-		cur.close()
-		s_mydb.close()
-		app.logger.info("my event exit")
-		socketio.emit('my response', json)
+			cur = s_mydb.cursor(buffered=True, dictionary=True)
+			cur.execute("SELECT * FROM matcha.users WHERE username = %s", (json['recieve_name'], ))
+			user_id = cur.fetchone()
+			cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (user_id['id'], ))
+			blocked = cur.fetchall()
+			for block in blocked:
+				if int(json['sender_id']) == int(block['user_id']):
+					notify = False
+					json['message'] = 'false'
+			cur.execute("INSERT INTO matcha.messages(sender_id, recipient_id, message, msg_sent) VALUES (%s, %s, %s, NOW())", (json['sender_id'], user_id['id'], json['message'], ))
+			if notify == True:
+				if json['is_chats'] != 'chats':
+					cur.execute("INSERT INTO matcha.notification_box (current_user_id, other_user_id, message) VALUES(%s, %s, %s)", (user_id['id'], json['sender_id'], "you got a new message from "+json['sender_name'], ))
+				cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (user_id['id'], ))
+				settings = cur.fetchone()
+				if settings['message'] == 1:
+					theme = "Someone wrote you a message!"
+					arguments = {
+						"who_sent" : json['sender_id'],
+						"my_username" : json['recieve_name'],
+						"message" : json['message'],
+					}
+					send_message(app, theme, user_id['email'], 'message', mail, arguments)
+			s_mydb.commit()
+			cur.close()
+			s_mydb.close()
+			app.logger.info("my event exit")
+			socketio.emit('my response', json)
 
 @socketio.on('profile check')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
@@ -826,13 +854,12 @@ def login():
 
 	return render_template('login.html')
 
-@app.route('/recommendations', defaults={'page': 1}, methods=['GET', 'POST'])
-@app.route('/recommendations/<int:page>')
+@app.route('/recommendations', methods=['GET', 'POST'])
 @is_logged_in
-def recommend(page):
+def recommend():
 	my_request = 'default'
 	my_user_demands = {}
-	if request.args.get('min_age'):
+	if request.args.get('min_age') != None and request.args.get('max_age') != None and request.args.get('min_fame') != None and request.args.get('max_fame') != None and request.args.get('max_location') != None and request.args.get('max_interests') != None:
 		my_user_demands['min_age'] = request.args.get('min_age')
 		my_user_demands['max_age'] = request.args.get('max_age')
 		my_user_demands['min_fame'] = request.args.get('min_fame')
@@ -840,6 +867,23 @@ def recommend(page):
 		my_user_demands['max_location'] = request.args.get('max_location')
 		my_user_demands['max_interests'] = request.args.get('max_interests')
 		my_request = 'filter'
+		if my_user_demands['min_age'] == "" or my_user_demands['min_age'].isnumeric() == False:
+			my_user_demands['min_age'] = 20
+
+		if my_user_demands['max_age'] == "" or my_user_demands['max_age'].isnumeric() == False:
+			my_user_demands['max_age'] = 50
+
+		if my_user_demands['max_fame'] == "" or my_user_demands['max_fame'].isnumeric() == False:
+			my_user_demands['max_fame'] = 1
+
+		if my_user_demands['min_fame'] == "" or my_user_demands['min_fame'].isnumeric() == False:
+			my_user_demands['min_fame'] = 0
+
+		if my_user_demands['max_location'] == "" or my_user_demands['max_location'].isnumeric() == False:
+			my_user_demands['max_location'] = 10
+
+		if my_user_demands['max_interests'] == "" or my_user_demands['max_interests'].isnumeric() == False:
+			my_user_demands['max_interests'] = 1
 
 		sort = '''SELECT matcha.users.id, matcha.users.name, matcha.users.last_name, matcha.users.username, matcha.users.logout,
 					matcha.users.fame_rating, matcha.users_pictures.profile_pic, matcha.users_basic_info.age,
@@ -1018,16 +1062,6 @@ def password_reset_finish(token):
 
 # LOGOUT
 
-# def is_logged_in(f):
-# 	@wraps(f)
-# 	def wrap(*args, **kwargs):
-# 		if 'logged_in' in session:
-# 			return f(*args, **kwargs)
-# 		else:
-# 			flash('Unauthorized. Please, log in', 'danger')
-# 			return redirect(url_for('login'))
-# 	return wrap
-
 @app.route('/logout')
 @is_logged_in
 def logout():
@@ -1121,135 +1155,140 @@ def edit():
 		description=description, city=city,	country=country, district=district, interests=interests, my_interests=my_interests)
 
 @app.route('/save-basic-info', methods=['GET', 'POST'])
+@is_logged_in
 def save_basic_info():
-	gender = request.form['gender']
-	birthday = request.form['day'] + request.form['month'] + request.form['year']
-	target_gender = request.form['looking_for']
-	min_age = request.form['min_age']
-	max_age = request.form['max_age']
+	if 'gender' in request.form and 'day' in request.form and 'month' in request.form and 'year' in request.form and 'min_age' in request.form and 'max_age' in request.form :
+		gender = request.form['gender']
+		birthday = request.form['day'] + request.form['month'] + request.form['year']
+		target_gender = request.form['looking_for']
+		min_age = request.form['min_age']
+		max_age = request.form['max_age']
 
-	app.logger.info(request.form['day'])
-	if int(request.form['day']) > 31 or int(request.form['day']) < 1 or int(request.form['month']) > 12 or int(request.form['month']) < 1:
-		app.logger.info("here for some reason")
-		return jsonify({'error' : 'Ooopsie. Something went wrong :('})
+		if int(request.form['day']) > 31 or int(request.form['day']) < 1 or int(request.form['month']) > 12 or int(request.form['month']) < 1 or int(request.form['min_age']) < 1 or int(request.form['max_age']) < 1:
+			app.logger.info("here for some reason")
+			return jsonify({'error' : 'Ooopsie. Something went wrong :('})
 
-	today = date.today()
-	age = today.year - int(request.form['year']) - ((today.month, today.day) < (int(request.form['month']), int(request.form['day'])))
+		today = date.today()
+		age = today.year - int(request.form['year']) - ((today.month, today.day) < (int(request.form['month']), int(request.form['day'])))
 
-	cur = mydb.cursor()
-	query = '''UPDATE matcha.users_basic_info SET
-				gender = %s,
-				bday_day = %s,
-				bday_month = %s,
-				bday_year = %s,
-				age = %s,
-				target_gender = %s,
-				target_min_age = %s,
-				target_max_age = %s
-				WHERE
-				user_id = %s'''
-	cur.execute(query, (gender, request.form['day'], request.form['month'], request.form['year'], age ,target_gender, min_age, max_age, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
-	# return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+		cur = mydb.cursor()
+		query = '''UPDATE matcha.users_basic_info SET
+					gender = %s,
+					bday_day = %s,
+					bday_month = %s,
+					bday_year = %s,
+					age = %s,
+					target_gender = %s,
+					target_min_age = %s,
+					target_max_age = %s
+					WHERE
+					user_id = %s'''
+		cur.execute(query, (gender, request.form['day'], request.form['month'], request.form['year'], age ,target_gender, min_age, max_age, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
 
 @app.route('/save-user-location', methods=['GET', 'POST'])
+@is_logged_in
 def save_user_location():
-	cur = mydb.cursor(dictionary=True)
-	cur.execute("SELECT * FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
-	coordinates = cur.fetchone()
-	cur.close()
+	if 'city' in request.form and 'district' in request.form:
+		cur = mydb.cursor(dictionary=True)
+		cur.execute("SELECT * FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
+		coordinates = cur.fetchone()
+		cur.close()
 
-	location = geolocator.geocode(request.form['city'], language='en', addressdetails=True)
-	user_district = "none"
-	city = "Unknown"
-	country = "Unknown"
+		location = geolocator.geocode(request.form['city'], language='en', addressdetails=True)
+		user_district = "none"
+		city = "Unknown"
+		country = "Unknown"
 
-	latitude = coordinates['latitude']
-	longitude = coordinates['longitude']
+		latitude = coordinates['latitude']
+		longitude = coordinates['longitude']
 
-	if location == None:
-		return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-
-	if 'address' in location.raw:
-		if 'city' in location.raw['address']:
-			location.raw['address']['city']
-			if request.form['city'] == location.raw['address']['city']:
-				city = request.form['city']
-				country = location.raw['address']['country']
-				latitude = location.raw['lat']
-				longitude = location.raw['lon']
-			else:
-				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-		elif 'town' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['town']:
-				city = request.form['city']
-				country = location.raw['address']['country']
-				latitude = location.raw['lat']
-				longitude = location.raw['lon']
-			else:
-				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-		elif 'county' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['county']:
-				city = request.form['city']
-				country = location.raw['address']['country']
-				latitude = location.raw['lat']
-				longitude = location.raw['lon']
-			else:
-				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-		elif 'city_district' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['city_district']:
-				city = request.form['city']
-				country = location.raw['address']['country']
-				latitude = location.raw['lat']
-				longitude = location.raw['lon']
-			else:
-				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-
-		elif 'state' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['state']:
-				city = request.form['city']
-				country = location.raw['address']['country']
-				latitude = location.raw['lat']
-				longitude = location.raw['lon']
-			else:
-				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
-		else:
+		if location == None:
 			return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
 
+		if 'address' in location.raw:
+			if 'city' in location.raw['address']:
+				location.raw['address']['city']
+				if request.form['city'] == location.raw['address']['city']:
+					city = request.form['city']
+					country = location.raw['address']['country']
+					latitude = location.raw['lat']
+					longitude = location.raw['lon']
+				else:
+					return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
+			elif 'town' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['town']:
+					city = request.form['city']
+					country = location.raw['address']['country']
+					latitude = location.raw['lat']
+					longitude = location.raw['lon']
+				else:
+					return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
+			elif 'county' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['county']:
+					city = request.form['city']
+					country = location.raw['address']['country']
+					latitude = location.raw['lat']
+					longitude = location.raw['lon']
+				else:
+					return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
+			elif 'city_district' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['city_district']:
+					city = request.form['city']
+					country = location.raw['address']['country']
+					latitude = location.raw['lat']
+					longitude = location.raw['lon']
+				else:
+					return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
 
-	district = geolocator.geocode(request.form['district'], language='en', addressdetails=True)
+			elif 'state' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['state']:
+					city = request.form['city']
+					country = location.raw['address']['country']
+					latitude = location.raw['lat']
+					longitude = location.raw['lon']
+				else:
+					return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
+			else:
+				return jsonify({'error' : 'It seems like the city you entered doesn\'t exist. Check the spelling or just take it easy'})
 
-	if district != None and 'address' in district.raw:
-		if 'city' in district.raw['address']:
-			if request.form['city'] == district.raw['address']['city']:
-				user_district = request.form['district']
-		elif 'town' in district.raw['address']:
-			if request.form['city'] == district.raw['address']['town']:
-				user_district = request.form['district']
-		elif 'county' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['county']:
-				user_district = request.form['district']
-		elif 'city_district' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['city_district']:
-				user_district = request.form['district']
-		elif 'state' in location.raw['address']:
-			if request.form['city'] == location.raw['address']['state']:
-				user_district = request.form['district']
-	
-	cur = mydb.cursor()
-	cur.execute('''UPDATE matcha.users_location SET city = "Unknown", user_city = %s, user_district = %s, user_country = %s, latitude = %s, longitude = %s WHERE user_id = %s''',
-								(city, user_district, country, latitude, longitude, session['id'], ))
 
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
+		district = geolocator.geocode(request.form['district'], language='en', addressdetails=True)
+
+		if district != None and 'address' in district.raw:
+			if 'city' in district.raw['address']:
+				if request.form['city'] == district.raw['address']['city']:
+					user_district = request.form['district']
+			elif 'town' in district.raw['address']:
+				if request.form['city'] == district.raw['address']['town']:
+					user_district = request.form['district']
+			elif 'county' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['county']:
+					user_district = request.form['district']
+			elif 'city_district' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['city_district']:
+					user_district = request.form['district']
+			elif 'state' in location.raw['address']:
+				if request.form['city'] == location.raw['address']['state']:
+					user_district = request.form['district']
+		
+		cur = mydb.cursor()
+		cur.execute('''UPDATE matcha.users_location SET city = "Unknown", user_city = %s, user_district = %s, user_country = %s, latitude = %s, longitude = %s WHERE user_id = %s''',
+									(city, user_district, country, latitude, longitude, session['id'], ))
+
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
 
 
 @app.route('/location', methods=['GET', 'POST'])
+@is_logged_in
 def location():
-	if request.form['latitude'] and request.form['longitude'] and request.form['backup_lat'] and request.form['backup_lon']:
+	if 'latitude' in request.form and 'longitude' in request.form and 'backup_lat' in request.form and 'backup_lon' in request.form:
 		latitude = request.form['latitude']
 		longitude = request.form['longitude']
 		backup_lat = request.form['backup_lat']
@@ -1274,95 +1313,108 @@ def location():
 					location.raw['address']['suburb'], latitude, longitude, backup_lat, backup_lon, session['id'], ))
 		mydb.commit()
 		cur.close()
-
-	return 'OK'
+		return 'OK'
+	return redirect(url_for('edit'))
 
 @app.route('/save-appearance', methods=['GET', 'POST'])
+@is_logged_in
 def save_appearance():
-	height = request.form['height']
-	body_type = request.form['body_type']
-	hair_color = request.form['hair_color']
-	eye_color = request.form['eye_color']
-	hair_type = request.form['hair_type']
+	if 'height' in request.form and 'body_type' in request.form and 'hair_color' in request.form and 'eye_color' in request.form and 'hair_type' in request.form:
+		height = request.form['height']
+		body_type = request.form['body_type']
+		hair_color = request.form['hair_color']
+		eye_color = request.form['eye_color']
+		hair_type = request.form['hair_type']
 
-	cur = mydb.cursor()
-	query = '''UPDATE matcha.users_appearance
-				SET
-				height = %s,
-				body_type = %s,
-				hair_color = %s,
-				eye_color = %s,
-				hair_type = %s
-				WHERE
-				user_id = %s'''
-	cur.execute(query, (height, body_type, hair_color, eye_color, hair_type, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
-	# return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+		cur = mydb.cursor()
+		query = '''UPDATE matcha.users_appearance
+					SET
+					height = %s,
+					body_type = %s,
+					hair_color = %s,
+					eye_color = %s,
+					hair_type = %s
+					WHERE
+					user_id = %s'''
+		cur.execute(query, (height, body_type, hair_color, eye_color, hair_type, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
 
 @app.route('/save-lifestyle', methods=['GET', 'POST'])
+@is_logged_in
 def save_lifestyle():
-	relationship_status = request.form['relationship_status']
-	children = request.form['children']
-	would_like_children = request.form['would_like_children']
-	diet = request.form['diet']
-	drinking = request.form['drinking']
-	smoking = request.form['smoking']
+	if 'relationship_status' in request.form and 'children' in request.form and 'would_like_children' in request.form and 'diet' in request.form and 'drinking' in request.form and 'smoking' in request.form:
+		relationship_status = request.form['relationship_status']
+		children = request.form['children']
+		would_like_children = request.form['would_like_children']
+		diet = request.form['diet']
+		drinking = request.form['drinking']
+		smoking = request.form['smoking']
 
-	cur = mydb.cursor()
-	query = '''UPDATE matcha.users_lifestyle
-				SET
-				relationship_status = %s,
-				children = %s,
-				would_like_children = %s,
-				diet = %s,
-				drinking = %s,
-				smoking = %s
-				WHERE
-				user_id = %s'''
-	cur.execute(query, (relationship_status, children, would_like_children, diet, drinking, smoking, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
-	# return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+		cur = mydb.cursor()
+		query = '''UPDATE matcha.users_lifestyle
+					SET
+					relationship_status = %s,
+					children = %s,
+					would_like_children = %s,
+					diet = %s,
+					drinking = %s,
+					smoking = %s
+					WHERE
+					user_id = %s'''
+		cur.execute(query, (relationship_status, children, would_like_children, diet, drinking, smoking, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
 
 @app.route('/save-background', methods=['GET', 'POST'])
+@is_logged_in
 def save_background():
-	education = request.form['education']
-	employment = request.form['employment']
-	occupation = request.form['occupation']
-	languages = request.form['languages']
-	if languages == "":
-		languages = 'Unknown'
-	
-	cur = mydb.cursor()
-	query = '''UPDATE matcha.users_background
-				SET
-				education = %s,
-				employment = %s,
-				occupation = %s,
-				languages = %s
-				WHERE
-				user_id = %s'''
-	cur.execute(query, (education, employment, occupation, languages, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
-	# return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+	if 'education' in request.form and 'employment' in request.form and 'occupation' in request.form and 'languages' in request.form:
+		education = request.form['education']
+		employment = request.form['employment']
+		occupation = request.form['occupation']
+		languages = request.form['languages']
+		if languages == "":
+			languages = 'Unknown'
+		
+		cur = mydb.cursor()
+		query = '''UPDATE matcha.users_background
+					SET
+					education = %s,
+					employment = %s,
+					occupation = %s,
+					languages = %s
+					WHERE
+					user_id = %s'''
+		cur.execute(query, (education, employment, occupation, languages, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
 
 @app.route('/save-description', methods=['GET', 'POST'])
+@is_logged_in
 def save_description():
-	about_me = request.form['about_me']
-	about_target = request.form['about_target']
+	if 'about_me' in request.form and 'about_target' in request.form:
+		about_me = request.form['about_me']
+		about_target = request.form['about_target']
 
-	cur = mydb.cursor()
-	query = "UPDATE matcha.users_description SET about_me = %s, about_target = %s WHERE user_id = %s"
-	cur.execute(query, (about_me, about_target, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
-	# return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+		cur = mydb.cursor()
+		query = "UPDATE matcha.users_description SET about_me = %s, about_target = %s WHERE user_id = %s"
+		cur.execute(query, (about_me, about_target, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('edit'))
+
+@app.route('/profile')
+@is_logged_in
+def profile_red():
+	return redirect(url_for('profile', username=session['username']))
 
 
 @app.route('/profile/<username>')
@@ -1380,6 +1432,10 @@ def profile(username):
 	cur = temp_mydb.cursor(dictionary=True, buffered=True)
 	cur.execute('''SELECT matcha.users.id, matcha.users.name, matcha.users.last_name, matcha.users.username, DATE_FORMAT(logout, '%a, %H:%i') AS logout FROM
 				matcha.users WHERE username = %s''', (username, ))
+	total = cur.rowcount
+	if total != 1:
+		cur.close()
+		return redirect(url_for("profile", username=session['username']))
 	data = cur.fetchone()
 	cur.close()
 
@@ -1528,509 +1584,578 @@ def details():
 	return render_template('details.html', details=details)
 
 @app.route('/save-account-info', methods=['GET', 'POST'])
+@is_logged_in
 def save_account_info():
-	name = request.form['name']
-	lastname = request.form['lastname']
-	username = request.form['username']
-	email = request.form['email']
-
-	cur = mydb.cursor()
-	query = "UPDATE matcha.users SET name = %s, last_name = %s, username = %s, email = %s WHERE id = %s"
-	cur.execute(query, (name, lastname, username, email, session['id'], ))
-	mydb.commit()
-	cur.close()
-	session.clear()
-	flash('You are now logged out', 'success')
-	return redirect(url_for('login'))
-
-@app.route('/upload-profile-pic', methods=['GET', 'POST'])
-def upload_profile_pic():
-	file = request.files['file']
-	if file and allowed_file(file.filename):
-		filename = secure_filename(file.filename)
-		newpath = r"static/uploads" + "/" + session['username'] + "/" + "profile_pic" + "/"
-		file_path = newpath + "/" + filename
-		if not os.path.exists(newpath):
-			os.makedirs(newpath)
-
-		file.save(os.path.join(newpath, filename))
-
-		new_file_name = newpath + "cropped_" + filename
-
-		im = Image.open(os.path.join(newpath, filename))
-		width, height = im.size
-		if width > height:
-			crop(file_path, (200, 0, 1000, 800), new_file_name )
-		else:
-			crop(file_path, (00, 0, 600, 600), new_file_name )
-		os.remove(file_path)
+	if 'name' in request.form and 'lastname' in request.form and 'username' in request.form and 'email' in request.form:
+		name = request.form['name']
+		lastname = request.form['lastname']
+		username = request.form['username']
+		email = request.form['email']
 
 		cur = mydb.cursor()
-		query = "UPDATE matcha.users_pictures SET profile_pic = %s WHERE user_id = %s"
-		cur.execute(query, (new_file_name, session['id'], ))
+		query = "UPDATE matcha.users SET name = %s, last_name = %s, username = %s, email = %s WHERE id = %s"
+		cur.execute(query, (name, lastname, username, email, session['id'], ))
 		mydb.commit()
 		cur.close()
-		session['profile_pic'] = new_file_name
-		return jsonify({'success' : 'Your profile pic has been set'})
-	return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+		session.clear()
+		flash('You are now logged out', 'success')
+		return "OK"
+	return redirect(url_for('details'))
+
+
+@app.route('/upload-profile-pic', methods=['GET', 'POST'])
+@is_logged_in
+def upload_profile_pic():
+	if 'file' in request.files:
+		file = request.files['file']
+		if file and allowed_file(file.filename) and file.filename != "" and file.filename.find(" ") == -1:
+			filename = secure_filename(file.filename)
+			newpath = r"static/uploads" + "/" + session['username'] + "/" + "profile_pic" + "/"
+			file_path = newpath + "/" + filename
+			if os.path.exists(newpath):
+				shutil.rmtree(newpath, ignore_errors=True)
+			
+			if not os.path.exists(newpath):
+				os.makedirs(newpath)
+
+			file.save(os.path.join(newpath, filename))
+
+			new_file_name = newpath + "cropped_" + filename
+
+			im = Image.open(os.path.join(newpath, filename))
+			width, height = im.size
+			if width > height:
+				crop(file_path, (200, 0, 1000, 800), new_file_name )
+			else:
+				crop(file_path, (00, 0, 600, 600), new_file_name )
+			os.remove(file_path)
+
+			cur = mydb.cursor()
+			query = "UPDATE matcha.users_pictures SET profile_pic = %s WHERE user_id = %s"
+			cur.execute(query, (new_file_name, session['id'], ))
+			mydb.commit()
+			cur.close()
+			session['profile_pic'] = new_file_name
+			return jsonify({'success' : 'Your profile pic has been set'})
+		return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+	return redirect(url_for('edit'))
 
 @app.route('/dropzone', methods=['GET', 'POST'])
 def dropzone():
-	mydb = mysql.connector.connect(**config)
-
-	new_uploads = 0
-	for f in request.files.getlist('file'):
-		new_uploads += 1
-
-	cur = mydb.cursor(dictionary=True, buffered=True)
-	query = "SELECT * FROM matcha.users_files_upload WHERE user_id = %s"
-	cur.execute(query, (session['id'], ))
-	already_uploaded = cur.rowcount
-	cur.close()
-
-	if new_uploads + already_uploaded > 4:
-		return jsonify({'error' : 'You cannot upload more than 4 files to your gallery. You already have %s' % already_uploaded})
-	
 	if 'file' in request.files:
-		newpath = r"static/uploads" + "/" + session['username'] + "/" + "awesome_pics" + "/"
-		pics = []
-		if not os.path.exists(newpath):
-			os.makedirs(newpath)
+		myconfig = {
+			'host' : 'localhost',
+			'user' : 'test',
+			'password' : 'test'
+		}
+		mydb = mysql.connector.connect(**myconfig)
+
+		new_uploads = 0
 		for f in request.files.getlist('file'):
-			if allowed_file(f.filename):
+			new_uploads += 1
+
+		cur = mydb.cursor(dictionary=True, buffered=True)
+		query = "SELECT * FROM matcha.users_files_upload WHERE user_id = %s"
+		cur.execute(query, (session['id'], ))
+		already_uploaded = cur.rowcount
+		cur.close()
+
+		if new_uploads + already_uploaded > 4:
+			return jsonify({'error' : 'You cannot upload more than 4 files to your gallery. You already have %s' % already_uploaded})
+		
+		if 'file' in request.files:
+			newpath = r"static/uploads" + "/" + session['username'] + "/" + "awesome_pics" + "/"
+			pics = []
+			if not os.path.exists(newpath):
+				os.makedirs(newpath)
+			for f in request.files.getlist('file'):
+				if not allowed_file(f.filename) or f.filename != "" or f.filename.find(" ") != -1:
+					return jsonify({'error' : 'Ooopsie :( Something went wrong'})
 				filename = secure_filename(f.filename)
 				f.save(os.path.join(newpath, filename))
 
 				new_file_name = newpath + filename
 				pics.append((session['id'], str(new_file_name)))
+				
 
-		cur = mydb.cursor(buffered=True)
-		query = "INSERT INTO matcha.users_files_upload (user_id, upload_pic) VALUES(%s, %s)"
-		cur.executemany(query, pics)
-		mydb.commit()
-		cur.close()
-		mydb.close()
+			cur = mydb.cursor(buffered=True)
+			query = "INSERT INTO matcha.users_files_upload (user_id, upload_pic) VALUES(%s, %s)"
+			cur.executemany(query, pics)
+			mydb.commit()
+			cur.close()
+			mydb.close()
 
-		return jsonify({'success' : 'Your pictures have been uploaded'})
-	return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+			return jsonify({'success' : 'Your pictures have been uploaded'})
+		return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+	return redirect(url_for('edit'))
 
 @app.route('/add_interests', methods=['GET', 'POST'])
+@is_logged_in
 def add_interests():
+	if 'tag' in request.form:
+		temp_mydb = mysql.connector.connect(**config)
 
-	temp_mydb = mysql.connector.connect(**config)
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		query = "SELECT * FROM matcha.interests WHERE interest = %s"
+		cur.execute(query, (request.form['tag'], ))
+		result = cur.rowcount
+		data = cur.fetchone()
+		interest_id = data['id']
 
+		query = "SELECT * FROM matcha.users_interests WHERE user_id = %s AND interest_id = %s"
+		cur.execute(query, (session['id'], interest_id, ))
+		entry_result = cur.rowcount
 
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	query = "SELECT * FROM matcha.interests WHERE interest = %s"
-	cur.execute(query, (request.form['tag'], ))
-	result = cur.rowcount
-	data = cur.fetchone()
-	interest_id = data['id']
+		if entry_result == 0:
+			query = "INSERT INTO matcha.users_interests (user_id, interest_id) VALUES(%s, %s)"
+			cur.execute(query, (session['id'], interest_id))
+		temp_mydb.commit()
+		cur.close()
+		temp_mydb.close()
 
-	query = "SELECT * FROM matcha.users_interests WHERE user_id = %s AND interest_id = %s"
-	cur.execute(query, (session['id'], interest_id, ))
-	entry_result = cur.rowcount
-
-	if entry_result == 0:
-		query = "INSERT INTO matcha.users_interests (user_id, interest_id) VALUES(%s, %s)"
-		cur.execute(query, (session['id'], interest_id))
-	temp_mydb.commit()
-	cur.close()
-	temp_mydb.close()
-
-	return "OK"
+		return "OK"
+	return redirect(url_for('edit'))
 
 @app.route('/remove_interests', methods=['GET', 'POST'])
+@is_logged_in
 def remove_interests():
+	if 'tag' in request.form:
+		temp_mydb = mysql.connector.connect(**config)
 
-	temp_mydb = mysql.connector.connect(**config)
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		query = "SELECT * FROM matcha.interests WHERE interest = %s"
+		cur.execute(query, (request.form['tag'], ))
+		result = cur.rowcount
+		data = cur.fetchone()
+		interest_id = data['id']
 
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	query = "SELECT * FROM matcha.interests WHERE interest = %s"
-	cur.execute(query, (request.form['tag'], ))
-	result = cur.rowcount
-	data = cur.fetchone()
-	interest_id = data['id']
+		query = "DELETE FROM matcha.users_interests WHERE user_id = %s AND interest_id = %s"
+		cur.execute(query, (session['id'], interest_id))
+		temp_mydb.commit()
+		cur.close()
+		temp_mydb.close()
 
-	query = "DELETE FROM matcha.users_interests WHERE user_id = %s AND interest_id = %s"
-	cur.execute(query, (session['id'], interest_id))
-	temp_mydb.commit()
-	cur.close()
-	temp_mydb.close()
-
-	return "OK"
+		return "OK"
+	return redirect(url_for('edit'))
 
 @app.route('/visit-history', methods=['GET', 'POST'])
+@is_logged_in
 def visit_history():
-	cur = mydb.cursor(dictionary=True, buffered=True)
+	if 'id' in session:
+		cur = mydb.cursor(dictionary=True, buffered=True)
 
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
 
-	session['notifications'] = notifications
+		session['notifications'] = notifications
 
-	cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time
-					FROM matcha.users_visits WHERE user_id = %s
+		cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time
+						FROM matcha.users_visits WHERE user_id = %s
+						AND visit_time BETWEEN (NOW() - INTERVAL 3 DAY) AND NOW() ORDER BY visit_time ASC''', (session['id'], ))
+		visits = cur.fetchall()
+		cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time FROM
+					matcha.users_visits WHERE visit_id = %s
 					AND visit_time BETWEEN (NOW() - INTERVAL 3 DAY) AND NOW() ORDER BY visit_time ASC''', (session['id'], ))
-	visits = cur.fetchall()
-	cur.execute('''SELECT *, DATE_FORMAT(visit_time, '%a, %H:%i') AS visit_time FROM
-				matcha.users_visits WHERE visit_id = %s
-				AND visit_time BETWEEN (NOW() - INTERVAL 3 DAY) AND NOW() ORDER BY visit_time ASC''', (session['id'], ))
-	i_visited = cur.fetchall()
-	cur.close()
-
-	history = []
-	my_history = []
-
-	for visit in visits:
-		cur = mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("SELECT * FROM matcha.users WHERE id = %s", (visit['visit_id'], ))
-		value = cur.fetchone()
-		history.append((value['username'], visit['visit_time']))
+		i_visited = cur.fetchall()
 		cur.close()
 
-	for visit in i_visited:
-		cur = mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("SELECT * FROM matcha.users WHERE id = %s", (visit['user_id'], ))
-		value = cur.fetchone()
-		my_history.append((value['username'], visit['visit_time']))
-		cur.close()
+		history = []
+		my_history = []
 
-	return render_template("visit_history.html", visits=history, my_visits=my_history)
-
-@app.route('/likes', methods=['GET', 'POST'])
-def likes():
-	cur = mydb.cursor(dictionary=True, buffered=True)
-
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
-
-	session['notifications'] = notifications
-
-	cur.execute('''SELECT *	FROM matcha.users_likes WHERE user_id = %s''', (session['id'], ))
-	likes = cur.fetchall()
-
-	cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
-	blocked = cur.fetchall()
-
-	for like in likes:
-		like['blocked'] = False
-
-	for likee in likes:
-		for block in blocked:
-			if like['user_id'] == block['blocked_by_user_id'] or like['user_id'] == block['user_id']:
-				like['blocked'] = True
-
-	recieved_likes = []
-	my_likes = []
-
-	for like in likes:
-		if like['blocked'] == False:
+		for visit in visits:
 			cur = mydb.cursor(dictionary=True, buffered=True)
-			cur.execute("SELECT * FROM matcha.users WHERE id = %s", (like['like_id'], ))
+			cur.execute("SELECT * FROM matcha.users WHERE id = %s", (visit['visit_id'], ))
 			value = cur.fetchone()
-			recieved_likes.append((value['username'], ))
-			cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (like['like_id'], session['id'], ))
-			mutual_like = cur.rowcount
-			if mutual_like == 1:
-				my_likes.append((value['username'], ))
+			history.append((value['username'], visit['visit_time']))
 			cur.close()
 
-	return render_template("likes.html", recieved_likes=recieved_likes, my_likes=my_likes)
+		for visit in i_visited:
+			cur = mydb.cursor(dictionary=True, buffered=True)
+			cur.execute("SELECT * FROM matcha.users WHERE id = %s", (visit['user_id'], ))
+			value = cur.fetchone()
+			my_history.append((value['username'], visit['visit_time']))
+			cur.close()
+
+		return render_template("visit_history.html", visits=history, my_visits=my_history)
+	return redirect(url_for('index'))
+
+@app.route('/likes', methods=['GET', 'POST'])
+@is_logged_in
+def likes():
+	if 'id' in session:
+		cur = mydb.cursor(dictionary=True, buffered=True)
+
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
+
+		session['notifications'] = notifications
+
+		cur.execute('''SELECT *	FROM matcha.users_likes WHERE user_id = %s''', (session['id'], ))
+		likes = cur.fetchall()
+
+		cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
+		blocked = cur.fetchall()
+
+		for like in likes:
+			like['blocked'] = False
+
+		for likee in likes:
+			for block in blocked:
+				if like['user_id'] == block['blocked_by_user_id'] or like['user_id'] == block['user_id']:
+					like['blocked'] = True
+
+		recieved_likes = []
+		my_likes = []
+
+		for like in likes:
+			if like['blocked'] == False:
+				cur = mydb.cursor(dictionary=True, buffered=True)
+				cur.execute("SELECT * FROM matcha.users WHERE id = %s", (like['like_id'], ))
+				value = cur.fetchone()
+				recieved_likes.append((value['username'], ))
+				cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (like['like_id'], session['id'], ))
+				mutual_like = cur.rowcount
+				if mutual_like == 1:
+					my_likes.append((value['username'], ))
+				cur.close()
+		return render_template("likes.html", recieved_likes=recieved_likes, my_likes=my_likes)
+	return redirect(url_for('index'))
 
 @app.route('/save-like', methods=['GET', 'POST'])
+@is_logged_in
 def save_like():
-	temp_mydb = mysql.connector.connect(**config)
+	if 'username' in request.form:
+		temp_mydb = mysql.connector.connect(**config)
 
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
-	data = cur.fetchone()
-	cur.close()
-
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
-	settings = cur.fetchone()
-
-	cur.execute("SELECT * FROM matcha.users_basic_info WHERE user_id = %s", (data['id'],))
-	gender = cur.fetchone()
-	cur.close()
-
-	if data['id'] != session['id']:
 		cur = temp_mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("INSERT INTO matcha.users_likes (user_id, like_id) VALUES (%s, %s)", (data['id'], session['id'], ))
-		temp_mydb.commit()
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
+		data = cur.fetchone()
 		cur.close()
-	temp_mydb.close()
 
-	return jsonify({'success' : 'You got a new like!'})
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
+		settings = cur.fetchone()
+
+		cur.execute("SELECT * FROM matcha.users_basic_info WHERE user_id = %s", (data['id'],))
+		gender = cur.fetchone()
+		cur.close()
+
+		if data['id'] != session['id']:
+			cur = temp_mydb.cursor(dictionary=True, buffered=True)
+			cur.execute("INSERT INTO matcha.users_likes (user_id, like_id) VALUES (%s, %s)", (data['id'], session['id'], ))
+			temp_mydb.commit()
+			cur.close()
+		temp_mydb.close()
+
+		return jsonify({'success' : 'You got a new like!'})
+	return redirect(url_for('index'))
 
 @app.route('/delete-like', methods=['GET', 'POST'])
+@is_logged_in
 def delete_like():
+	if 'username' in request.form:
+		temp_mydb = mysql.connector.connect(**config)
 
-	temp_mydb = mysql.connector.connect(**config)
-
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
-	data = cur.fetchone()
-
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
-	settings = cur.fetchone()
-	cur.close()
-
-	if data['id'] != session['id']:
 		cur = temp_mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("DELETE FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (data['id'], session['id'], ))
-		temp_mydb.commit()
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
+		data = cur.fetchone()
+
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
+		settings = cur.fetchone()
 		cur.close()
-	temp_mydb.close()
-	return jsonify({'success' : 'Someone disliked you :('})
+
+		if data['id'] != session['id']:
+			cur = temp_mydb.cursor(dictionary=True, buffered=True)
+			cur.execute("DELETE FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (data['id'], session['id'], ))
+			temp_mydb.commit()
+			cur.close()
+		temp_mydb.close()
+		return jsonify({'success' : 'Someone disliked you :('})
+	return redirect(url_for('index'))
 
 @app.route('/report-user', methods=['GET', 'POST'])
+@is_logged_in
 def report_user():
-	theme = "New user report"
-	arguments = {
-		"username_reporting" : session['username'],
-		"username_reported" : request.form['username'],
-	}
-
-	app.logger.info(arguments)
-	send_message(app, theme, "semkaway@gmail.com", 'report', mail, arguments)
-	return jsonify({'success' : 'Your report will be reviewed by moderator as soon as possible. Thank you for your concern'})
+	if 'username' in session and 'username' in request_form:
+		theme = "New user report"
+		arguments = {
+			"username_reporting" : session['username'],
+			"username_reported" : request.form['username'],
+		}
+		send_message(app, theme, "semkaway@gmail.com", 'report', mail, arguments)
+		return jsonify({'success' : 'Your report will be reviewed by moderator as soon as possible. Thank you for your concern'})
+	return redirect(url_for('index'))
 
 @app.route('/block-user', methods=['GET', 'POST'])
+@is_logged_in
 def block_user():
-	cur = mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
-	data = cur.fetchone()
-	cur.execute("SELECT * FROM matcha.users_blocked WHERE user_id = %s AND blocked_by_user_id = %s", (data['id'], session['id'], ))
-	result = cur.rowcount
-	if result == 0:
-		cur.execute("INSERT INTO matcha.users_blocked (user_id, blocked_by_user_id) VALUES (%s, %s)", (data['id'], session['id'], ))
-		mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'This user has been blocked. This page will not appear in your search again'})
+	if 'username' in request.form and 'id' in session:
+		cur = mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
+		data = cur.fetchone()
+		cur.execute("SELECT * FROM matcha.users_blocked WHERE user_id = %s AND blocked_by_user_id = %s", (data['id'], session['id'], ))
+		result = cur.rowcount
+		if result == 0:
+			cur.execute("INSERT INTO matcha.users_blocked (user_id, blocked_by_user_id) VALUES (%s, %s)", (data['id'], session['id'], ))
+			mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'This user has been blocked. This page will not appear in your search again'})
+	return redirect(url_for('index'))
 
 @app.route('/unblock-user', methods=['GET', 'POST'])
+@is_logged_in
 def unblock_user():
-	cur = mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
-	data = cur.fetchone()
-	cur.execute("DELETE FROM matcha.users_blocked WHERE user_id = %s AND blocked_by_user_id = %s", (data['id'], session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'This user has been unblocked.'})
+	if 'username' in request.form and 'id' in session:
+		cur = mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'],))
+		data = cur.fetchone()
+		cur.execute("DELETE FROM matcha.users_blocked WHERE user_id = %s AND blocked_by_user_id = %s", (data['id'], session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'This user has been unblocked.'})
+	return redirect(url_for('index'))
 
 @app.route('/check-mutual', methods=['GET', 'POST'])
+@is_logged_in
 def check_mutual():
-	temp_mydb = mysql.connector.connect(**config)
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'], ))
-	data = cur.fetchone()
+	if 'username' in request.form and 'id' in session:
+		temp_mydb = mysql.connector.connect(**config)
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'], ))
+		data = cur.fetchone()
 
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
-	settings = cur.fetchone()
-	cur.close()
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (data['id'], ))
+		settings = cur.fetchone()
+		cur.close()
 
-	cur = temp_mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (session['id'], data['id'], ))
-	likes = cur.rowcount
-	if likes == 1:
-		cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (data['id'], session['id'], ))
-		num_mutual = cur.rowcount
-		if num_mutual == 1:
-			if session['profile_pic'] != "static/img/default_profile.jpg":
-				temp_mydb.commit()
-			return jsonify({'value' : 'True'})
-	cur.close()
-	temp_mydb.close()
-	return jsonify({'value' : 'False'})
+		cur = temp_mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (session['id'], data['id'], ))
+		likes = cur.rowcount
+		if likes == 1:
+			cur.execute("SELECT * FROM matcha.users_likes WHERE user_id = %s AND like_id = %s", (data['id'], session['id'], ))
+			num_mutual = cur.rowcount
+			if num_mutual == 1:
+				if session['profile_pic'] != "static/img/default_profile.jpg":
+					temp_mydb.commit()
+				return jsonify({'value' : 'True'})
+		cur.close()
+		temp_mydb.close()
+		return jsonify({'value' : 'False'})
+	return redirect(url_for('index'))
 
 @app.route('/chats', methods=['GET', 'POST'])
+@is_logged_in
 def chats_empty():
-	cur = mydb.cursor(buffered=True, dictionary=True)
+	if 'id' in session:
+		cur = mydb.cursor(buffered=True, dictionary=True)
 
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
 
-	session['notifications'] = notifications
+		session['notifications'] = notifications
 
-	cur.execute('''SELECT matcha.users_likes.like_id FROM matcha.users_likes WHERE matcha.users_likes.user_id = %s''', (session['id'], ))
-	users = cur.fetchall()
-	cur.execute('''SELECT matcha.users_likes.user_id FROM matcha.users_likes WHERE matcha.users_likes.like_id = %s''', (session['id'], ))
-	likes = cur.fetchall()
-	cur.execute('''SELECT * FROM matcha.users_blocked WHERE user_id = %s OR blocked_by_user_id = %s''', (session['id'], session['id'], ))
-	blocked = cur.fetchall()
-	cur.execute('''SELECT * FROM matcha.users
-					INNER JOIN matcha.users_pictures ON matcha.users_pictures.user_id=matcha.users.id
-					INNER JOIN matcha.users_basic_info ON matcha.users_basic_info.user_id=matcha.users.id
-					INNER JOIN matcha.users_location ON matcha.users_location.user_id=matcha.users.id''')
-	profiles = cur.fetchall()
-	for profile in profiles:
-		profile['blocked'] = False
+		cur.execute('''SELECT matcha.users_likes.like_id FROM matcha.users_likes WHERE matcha.users_likes.user_id = %s''', (session['id'], ))
+		users = cur.fetchall()
+		cur.execute('''SELECT matcha.users_likes.user_id FROM matcha.users_likes WHERE matcha.users_likes.like_id = %s''', (session['id'], ))
+		likes = cur.fetchall()
+		cur.execute('''SELECT * FROM matcha.users_blocked WHERE user_id = %s OR blocked_by_user_id = %s''', (session['id'], session['id'], ))
+		blocked = cur.fetchall()
+		cur.execute('''SELECT * FROM matcha.users
+						INNER JOIN matcha.users_pictures ON matcha.users_pictures.user_id=matcha.users.id
+						INNER JOIN matcha.users_basic_info ON matcha.users_basic_info.user_id=matcha.users.id
+						INNER JOIN matcha.users_location ON matcha.users_location.user_id=matcha.users.id''')
+		profiles = cur.fetchall()
+		for profile in profiles:
+			profile['blocked'] = False
 
-	for profile in profiles:
-		for block in blocked:
-			if profile['id'] == block['blocked_by_user_id'] or profile['id'] == block['user_id']:
-				profile['blocked'] = True
-	cur.close()
-	return render_template("chats.html", users=users, messages="none", likes=likes, profiles=profiles)
+		for profile in profiles:
+			for block in blocked:
+				if profile['id'] == block['blocked_by_user_id'] or profile['id'] == block['user_id']:
+					profile['blocked'] = True
+		cur.close()
+		return render_template("chats.html", users=users, messages="none", likes=likes, profiles=profiles)
+	return redirect(url_for('index'))
 
 @app.route('/chats/<person>', defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route('/chats/<person>/<int:page>')
+@is_logged_in
 def chats(person, page):
+	if 'id' in session:
 
-	msg_mydb = mysql.connector.connect(**config)
+		msg_mydb = mysql.connector.connect(**config)
 
-	cur = msg_mydb.cursor(buffered=True, dictionary=True)
-
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
-	cur.close()
-
-	session['notifications'] = notifications
-
-	cur = msg_mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (person, ))
-	uid = cur.fetchone()
-	cur.close()
-
-	cur = msg_mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("SELECT * FROM matcha.users_likes WHERE (user_id = %s AND like_id = %s) OR (user_id = %s AND like_id = %s)", (uid['id'], session['id'], session['id'], uid['id'], ))
-	num_mutual = cur.rowcount
-	cur.close()
-
-	cur = msg_mydb.cursor(buffered=True, dictionary=True)
-	cur.execute('''SELECT * FROM matcha.users_blocked WHERE (user_id = %s AND blocked_by_user_id = %s) OR (user_id = %s AND blocked_by_user_id = %s)''', (uid['id'], session['id'], session['id'], uid['id'], ))
-	blocked = cur.rowcount
-	cur.close()
-	if num_mutual == 2 and blocked == 0:
 		cur = msg_mydb.cursor(buffered=True, dictionary=True)
-		cur.execute("SELECT matcha.users.id, matcha.users.username FROM matcha.users")
-		users = cur.fetchall()
+
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
+		cur.close()
+
+		session['notifications'] = notifications
+
+		cur = msg_mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (person, ))
+		uid = cur.fetchone()
+		total = cur.rowcount
+		if total != 1:
+			cur.close()
+			return redirect(url_for("chats_empty"))
 		cur.close()
 
 		cur = msg_mydb.cursor(buffered=True, dictionary=True)
-		cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
-						FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s)
-						OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC''',
-					(session['id'], uid['id'], uid['id'], session['id'], ))
-		num_pages = cur.rowcount / 15
-		if cur.rowcount % 15 != 0:
-			num_pages = cur.rowcount / 15 + 1
-		pages = []
-		pages_temp = 1
-		while pages_temp <= num_pages:
-			pages.append(pages_temp)
-			pages_temp += 1
+		cur.execute("SELECT * FROM matcha.users_likes WHERE (user_id = %s AND like_id = %s) OR (user_id = %s AND like_id = %s)", (uid['id'], session['id'], session['id'], uid['id'], ))
+		num_mutual = cur.rowcount
 		cur.close()
 
 		cur = msg_mydb.cursor(buffered=True, dictionary=True)
-		cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
-						FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s) 
-						OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC LIMIT %s, %s''',
-					(session['id'], uid['id'], uid['id'], session['id'], page * 15 - 15, 15, ))
-		messages = cur.fetchall()
+		cur.execute('''SELECT * FROM matcha.users_blocked WHERE (user_id = %s AND blocked_by_user_id = %s) OR (user_id = %s AND blocked_by_user_id = %s)''', (uid['id'], session['id'], session['id'], uid['id'], ))
+		blocked = cur.rowcount
 		cur.close()
-		msg_mydb.close()
-		return render_template("chats.html", messages=messages, users=users, pages=pages, uid=uid)
-	else:
-		msg_mydb.close()
-		return redirect(url_for("chats_empty"))
+		if num_mutual == 2 and blocked == 0:
+			cur = msg_mydb.cursor(buffered=True, dictionary=True)
+			cur.execute("SELECT matcha.users.id, matcha.users.username FROM matcha.users")
+			users = cur.fetchall()
+			cur.close()
+
+			cur = msg_mydb.cursor(buffered=True, dictionary=True)
+			cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
+							FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s)
+							OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC''',
+						(session['id'], uid['id'], uid['id'], session['id'], ))
+			num_pages = cur.rowcount / 15
+			if cur.rowcount % 15 != 0:
+				num_pages = cur.rowcount / 15 + 1
+			if page > num_pages:
+				return redirect(url_for('chats_empty'))
+			pages = []
+			pages_temp = 1
+			while pages_temp <= num_pages:
+				pages.append(pages_temp)
+				pages_temp += 1
+			cur.close()
+
+			cur = msg_mydb.cursor(buffered=True, dictionary=True)
+			cur.execute('''SELECT *, DATE_FORMAT(msg_sent, '%a %H:%i') AS msg_sent
+							FROM matcha.messages WHERE (sender_id = %s AND recipient_id = %s) 
+							OR (sender_id = %s AND recipient_id = %s) ORDER BY msg_sent DESC LIMIT %s, %s''',
+						(session['id'], uid['id'], uid['id'], session['id'], page * 15 - 15, 15, ))
+			messages = cur.fetchall()
+			cur.close()
+			msg_mydb.close()
+			return render_template("chats.html", messages=messages, users=users, pages=pages, uid=uid)
+		else:
+			msg_mydb.close()
+			return redirect(url_for("chats_empty"))
+	return(redirect(url_for('index')))
 
 @app.route('/delete-pic', methods=['GET', 'POST'])
 @is_logged_in
 def delete_pic():
-	app.logger.info(request.form)
-	cur = mydb.cursor(dictionary=True, buffered=True)
-	cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'], ))
-	user_id = cur.fetchone()
-	cur.execute("DELETE FROM matcha.users_files_upload WHERE user_id = %s AND upload_pic = %s", (user_id['id'], request.form['picture'], ))
-	mydb.commit()
-	cur.close()
+	if 'username' in request.form:
+		cur = mydb.cursor(dictionary=True, buffered=True)
+		cur.execute("SELECT * FROM matcha.users WHERE username = %s", (request.form['username'], ))
+		user_id = cur.fetchone()
+		cur.execute("DELETE FROM matcha.users_files_upload WHERE user_id = %s AND upload_pic = %s", (user_id['id'], request.form['picture'], ))
+		mydb.commit()
+		cur.close()
 
-	if os.path.exists(request.form['picture']):
-		app.logger.info("pic exists")
-		os.remove(request.form['picture'])
-	return "OK"
+		if os.path.exists(request.form['picture']):
+			app.logger.info("pic exists")
+			os.remove(request.form['picture'])
+		return "OK"
+	return(redirect(url_for('index')))
 
 
 @app.route('/delete-account', methods=['GET', 'POST'])
+@is_logged_in
 def delete_account():
-	cur = mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("DELETE FROM matcha.users_visits WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_visits WHERE visit_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_pictures WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_likes WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_lifestyle WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_interests WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_files_upload WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_description WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_basic_info WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_appearance WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users_background WHERE user_id = %s", (session['id'], ))
-	cur.execute("DELETE FROM matcha.users WHERE id = %s", (session['id'], ))
-	mydb.commit()
-	cur.close()
+	if 'id' in session:
+		cur = mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("DELETE FROM matcha.users_visits WHERE (user_id = %s) OR (visit_id = %s)", (session['id'], session['id'], ))
+		cur.execute("DELETE FROM matcha.messages WHERE (sender_id = %s) OR (recipient_id = %s)", (session['id'], session['id'], ))
+		cur.execute("DELETE FROM matcha.notifications WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.notification_box WHERE (current_user_id = %s) OR (other_user_id = %s)", (session['id'], session['id'], ))
+		cur.execute("DELETE FROM matcha.users_blocked WHERE (user_id = %s) OR (blocked_by_user_id = %s)", (session['id'], session['id'], ))
+		cur.execute("DELETE FROM matcha.users_interests WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_pictures WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_likes WHERE (user_id = %s) OR (like_id = %s)", (session['id'], session['id'], ))
+		cur.execute("DELETE FROM matcha.users_lifestyle WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_files_upload WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_description WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_basic_info WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_appearance WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users_background WHERE user_id = %s", (session['id'], ))
+		cur.execute("DELETE FROM matcha.users WHERE id = %s", (session['id'], ))
+		mydb.commit()
+		cur.close()
 
-	newpath = r"static/uploads" + "/" + session['username']
-	if os.path.exists(newpath):
-		shutil.rmtree(newpath, ignore_errors=True)
+		newpath = r"static/uploads" + "/" + session['username']
+		if os.path.exists(newpath):
+			shutil.rmtree(newpath, ignore_errors=True)
 
-	session.clear()
+		session.clear()
 
-	return "OK"
+		return "OK"
+	return(redirect(url_for('index')))
 
 @app.route('/delete-notification', methods=['GET', 'POST'])
+@is_logged_in
 def delete_notification():
-	cur = mydb.cursor(buffered=True, dictionary=True)
-	cur.execute("DELETE FROM matcha.notification_box WHERE current_user_id = %s AND message = %s", (request.form['current_user_id'], request.form['message'], ))
-	mydb.commit()
-	cur.close()
-	return "OK"
+	if 'current_user_id' in request.form and 'message' in request.form:
+		cur = mydb.cursor(buffered=True, dictionary=True)
+		cur.execute("DELETE FROM matcha.notification_box WHERE current_user_id = %s AND message = %s", (request.form['current_user_id'], request.form['message'], ))
+		mydb.commit()
+		cur.close()
+		return "OK"
+	return redirect(url_for('index'))
 
 @app.route('/settings')
 @is_logged_in
 def settings():
-	cur = mydb.cursor(dictionary=True, buffered=True)
+	if 'id' in session:
+		cur = mydb.cursor(dictionary=True, buffered=True)
 
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
 
-	session['notifications'] = notifications
+		session['notifications'] = notifications
 
-	cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (session['id'], ))
-	settings = cur.fetchone()
-	cur.close()
-	return render_template('settings.html', settings=settings)
+		cur.execute("SELECT * FROM matcha.notifications WHERE user_id = %s", (session['id'], ))
+		settings = cur.fetchone()
+		cur.close()
+		return render_template('settings.html', settings=settings)
+	return redirect(url_for('index'))
 
 @app.route('/save-settings', methods=['GET', 'POST'])
+@is_logged_in
 def save_settings():
-	new_message = 1
-	new_like = 1
-	profile_check = 1
-	mutual_like = 1
-	unlike = 1
+	if 'new_message' in request.form and 'new_like' in request.form and 'profile_check' in request.form and 'new_connection' in request.form and 'new_unlike' in request.form:
+		new_message = 1
+		new_like = 1
+		profile_check = 1
+		mutual_like = 1
+		unlike = 1
 
-	if request.form['new_message'] == 'false':
-		new_message = 0
-	if request.form['new_like'] == 'false':
-		new_like = 0
-	if request.form['profile_check'] == 'false':
-		profile_check = 0
-	if request.form['new_connection'] == 'false':
-		mutual_like = 0		
-	if request.form['new_unlike'] == 'false':
-		unlike = 0
+		if request.form['new_message'] == 'false':
+			new_message = 0
+		if request.form['new_like'] == 'false':
+			new_like = 0
+		if request.form['profile_check'] == 'false':
+			profile_check = 0
+		if request.form['new_connection'] == 'false':
+			mutual_like = 0		
+		if request.form['new_unlike'] == 'false':
+			unlike = 0
 
-	cur = mydb.cursor()
-	cur.execute("UPDATE matcha.notifications SET message = %s, new_like = %s, unlike = %s, profile_check = %s, mutual_like = %s WHERE user_id = %s", 
-				(new_message, new_like, unlike, profile_check, mutual_like, session['id'], ))
-	mydb.commit()
-	cur.close()
-	return jsonify({'success' : 'Your changes have been saved'})
+		cur = mydb.cursor()
+		cur.execute("UPDATE matcha.notifications SET message = %s, new_like = %s, unlike = %s, profile_check = %s, mutual_like = %s WHERE user_id = %s", 
+					(new_message, new_like, unlike, profile_check, mutual_like, session['id'], ))
+		mydb.commit()
+		cur.close()
+		return jsonify({'success' : 'Your changes have been saved'})
+	return redirect(url_for('index'))
 
 # USER PROFILE END
 
@@ -2048,7 +2173,12 @@ def page_gone(e):
 
 @app.errorhandler(500)
 def server_error(e):
+	app.logger.info("aaa")
 	return render_template('500.html'), 500
 
+@app.errorhandler(413)
+def page_not_found(e):
+	return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+
 if __name__ == '__main__':
-	socketio.run(app, debug=True)
+	socketio.run(app)

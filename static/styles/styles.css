@@ -1,6 +1,8 @@
 body, html {
-    height: 100%;
     background-color: rgb(254, 255, 247);
+    display: block;
+    position: relative;
+    height: 100%;
 }
 
 nav {
@@ -26,6 +28,17 @@ a:hover {
 	text-decoration: none;
 }
 
+.container-fluid {
+	min-height: calc(100vh - 40px);
+}
+
+footer {
+	background-color: rgba(236, 242, 193, 0.5);
+	text-align: right;
+	padding: 1rem;
+    height: 40px;
+}
+
 
 .nav-link {
 	color: black;
@@ -44,8 +57,6 @@ small {
 }
 
 .profile-card {
-/*	width: 40vw;
-*/	max-height: 35vh;
 	background-color: white;
 }
 
@@ -54,18 +65,16 @@ small {
 }
 
 .card-img{
-/*	width: 40vw;
-*/	width: 13vw;
+	width: 13vw;
 }
 
 .profile-pic-big {
-	width: 19vw;
+	width: 60%;
 }
 
 .welcome_page {
 	background-image: url("https://images.pexels.com/photos/347023/pexels-photo-347023.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");
 	height: 100%; 
-
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
@@ -98,6 +107,10 @@ div.btn-group {
 	width: 8vw;
 }
 
+.short-1 input {
+	width: 10vw;
+}
+
 .profile-blocks {
 	background-color: rgb(246, 247, 239);
 }
@@ -111,21 +124,19 @@ div.btn-group {
 }
 
 .profile-header {
-/*	background-image: url("https://images.pexels.com/photos/255379/pexels-photo-255379.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");*/
 	background-image: url("https://images.pexels.com/photos/949587/pexels-photo-949587.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260"); 
-/*	background-image: url("https://images.pexels.com/photos/255377/pexels-photo-255377.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260");*/
 	background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
 	width: 100%;
-	height: 40vh;
+	display: block;
+	height: 500px;
 }
 
 .profile-header-blocks {
 	background-color: rgba(201, 204, 185, 0.9);
 	margin-bottom: -3rem;
-	height: 20vh;
-
+	width: 18vw;
 }
 
 .profile-header-blocks p {
@@ -219,8 +230,16 @@ thead {
 	width: 15vw;
 	height: 10vh;
 }
+
+
 .card-text {
-	max-height: 20vh;
-	display: block;
-  	overflow: auto;
+  	line-height: 0.7;
+}
+
+textarea {
+	resize: vertical;
+}
+
+.stable {
+	height: 100%;
 }

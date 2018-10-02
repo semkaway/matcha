@@ -3,6 +3,38 @@ $(document).ready(function()  {
 	var location = window.location.pathname.split('/');
 	var socket = io.connect('http://127.0.0.1:5000');
 
+	socket.on('error', (err) => {
+        console.log('Error connecting to server', err);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnect from server');
+    });
+
+    socket.on('reconnect', (number) => {
+        console.log('Reconnected to server', number);
+    });
+
+    socket.on('reconnect_attempt', () => {
+        console.log('Reconnect Attempt');
+    });
+
+    socket.on('reconnecting', (number) => {
+        console.log('Reconnecting to server', number);
+    });
+
+    socket.on('reconnect_error', (err) => {
+        console.log('Reconnect Error', err);
+    });
+
+    socket.on('reconnect_failed', () => {
+        console.log('Reconnect failed');
+    });
+
+    socket.on('connect_error', () => {
+        console.log('connect_error');
+    });
+	
 
     socket.on('connect', function() {
         console.log('Websocket connected!');
@@ -75,16 +107,18 @@ $(document).ready(function()  {
 		  );
 		}
 
-        var current_user_id = $('#current_user_id').val();
-        var current_user = $('#current_user').val();
-        if (current_user != location[2]) {
-	        socket.emit( 'profile check', {
-	        	visitor_name : current_user,
-	        	visitor_id : current_user_id,
-	            host_name : location[2],
-	            message: current_user+" checked your profile"
-	        })
-	    }
+		socket.on('connect', function () {
+	        var current_user_id = $('#current_user_id').val();
+	        var current_user = $('#current_user').val();
+	        if (current_user != location[2]) {
+		        socket.emit( 'profile check', {
+		        	visitor_name : current_user,
+		        	visitor_id : current_user_id,
+		            host_name : location[2],
+		            message: current_user+" checked your profile"
+		        })
+		    }
+		})
 	}
 
 	socket.on( 'profile response', function( msg ) {
@@ -371,18 +405,9 @@ $(document).ready(function()  {
 			type: 'POST',
 			url: '/save-account-info'
 		})
-		.done(function(data) {
-
-			if (data.error) {
-				$('#errorAlertAccount').text(data.error).show();
-				$('#successAlertAccount').hide();
-			}
-			else {
-				$('#successAlertAccount').text(data.success).show();
-				$('#errorAlertAccount').hide();
-			}
-		});
-
+		.done(function() {
+			window.location.replace("/");
+		})
 		event.preventDefault();
 	});
 
@@ -646,43 +671,90 @@ $(document).ready(function()  {
 	//NEW CODE
 
 	socket.on( 'my response', function( msg ) {
-	var current_user = $('#current_user').val();
-	var d = new Date();
-	var time = d.toLocaleTimeString('en-GB', {weekday: 'short', hour: '2-digit', minute:'2-digit'});
-	if( typeof msg.message !== 'undefined' && msg.message != 'false' && ((msg.recieve_name == current_user) || (msg.sender_name == current_user))) {
-	    if (msg.sender_name == current_user) {
-		    $( 'div.message_holder' ).prepend('<div class="m-1">'+
-		    										'<div class="float-left text-message"><b class="text-success">'+msg.sender_name+': </b>'+msg.message+'</div>'+
-			    									'<div class="float-right text-lowercase text-muted">'+time+'</div>'+
-			    									'<div class="clearfix"></div>'+
-		    									'</div>' )
-		} else {
-			$( 'div.message_holder' ).prepend('<div class="m-1">'+
-		    										'<div class="float-left text-message"><b class="text-info">'+msg.sender_name+': </b>'+msg.message+'</div>'+
-			    									'<div class="float-right text-lowercase text-muted">'+time+'</div>'+
-			    									'<div class="clearfix"></div>'+
-		    									'</div>' )
+		var current_user = $('#current_user').val();
+		var d = new Date();
+		var time_n = d.toLocaleTimeString('en-GB', {weekday: 'short', hour: '2-digit', minute:'2-digit'});
+		var node_time = document.createTextNode(time_n)
+		console.log(node_time)
+		var message = document.createTextNode(": "+msg.message)
+		var sender_name = document.createTextNode(msg.sender_name)
+		var outer_div = document.createElement('div')
+		outer_div.className = "m-1"
+		var inner_div = document.createElement('div')
+		inner_div.className = "float-left text-message"
+		var bold = document.createElement('b')
+		bold.className = "text-success"
+		var time = document.createElement('div')
+		time.className = "float-right text-lowercase text-muted"
+		var clearfix = document.createElement('div')
+		clearfix.className = "clearfix"
+
+		if (msg.message !== '' && msg.message != 'false' && ((msg.recieve_name == current_user) || (msg.sender_name == current_user))) {
+		    if (msg.sender_name == current_user) {
+		    	bold.appendChild(sender_name)
+				inner_div.appendChild(bold)
+				inner_div.appendChild(message)
+				time.appendChild(node_time)
+				outer_div.appendChild(inner_div)
+				outer_div.appendChild(time)
+				outer_div.appendChild(clearfix)
+			    $( 'div.message_holder' ).prepend(outer_div)
+			} else {
+				bold.className = "text-info"
+				bold.appendChild(sender_name)
+				inner_div.appendChild(bold)
+				inner_div.appendChild(message)
+				time.appendChild(node_time)
+				outer_div.appendChild(inner_div)
+				outer_div.appendChild(time)
+				outer_div.appendChild(clearfix)
+
+				$( 'div.message_holder' ).prepend(outer_div)
+			}
+		    if (msg.recieve_name == current_user && location[1] != 'chats') {
+		    	$( '#notification-box' ).append('<div class="alert alert-success show fade alert-dismissible float-right" role="alert">'+msg.notification+'<button type="button" class="close" data-dismiss="alert" aria-label="Close" value="'+msg.notification+'"><span aria-hidden="true">&times;</span><input value="'+msg.notification+'" hidden></button></div>' )
+		    }
 		}
-	    if (msg.recieve_name == current_user && location[1] != 'chats') {
-	    	$( '#notification-box' ).append('<div class="alert alert-success show fade alert-dismissible float-right" role="alert">'+msg.notification+'<button type="button" class="close" data-dismiss="alert" aria-label="Close" value="'+msg.notification+'"><span aria-hidden="true">&times;</span><input value="'+msg.notification+'" hidden></button></div>' )
-	    }
-	  }
 	})
 
-    var form = $( '#message_form' ).on( 'submit', function( e ) {
+    $('#message_form').on( 'submit', function(e) {
         var current_user_id = $('#current_user_id').val();
-        var current_user = $('#current_user').val();
+        var current_user = $('#current_user').val()
         e.preventDefault()
-        let user_input =  $( '.message' ).val()
+
+        var user_input =  $('.message').val();
         socket.emit( 'my event', {
         	sender_name : current_user,
         	sender_id : current_user_id,
             recieve_name : location[2],
             message : user_input,
-            notification : "you got a new message from "+current_user,
+            notification : "you got a new message from " + current_user,
             is_chats : location[1]
         })
         $('.emoji-wysiwyg-editor').html('').focus()
+    })
+
+    $('#message_form').keypress(function(e) {
+    	if (e.keyCode == '13') {
+	        var current_user_id = $('#current_user_id').val();
+	        var current_user = $('#current_user').val()
+	        e.preventDefault()
+
+	        var user_input =  $('.message').val();
+	        if (user_input == "") {
+	        	user_input =  $('.message').text();
+	        }
+	        console.log(user_input)
+	        socket.emit( 'my event', {
+	        	sender_name : current_user,
+	        	sender_id : current_user_id,
+	            recieve_name : location[2],
+	            message : user_input,
+	            notification : "you got a new message from " + current_user,
+	            is_chats : location[1]
+	        })
+        	$('.emoji-wysiwyg-editor').html('').focus()       
+	    }
     })
 
 	$(document).on('click', '.close', function() {
@@ -728,6 +800,26 @@ $(document).ready(function()  {
 		var max_location = $('#max_location').val()
 		var max_interests = $('#max_interests').val()
 
+		if (min_age == "" || $.isNumeric(min_age) == false) {
+			min_age = 20
+		}
+
+		if (max_age == "" || $.isNumeric(max_age) == false) {
+			max_age = 50
+		}
+
+		if (min_fame == "" || $.isNumeric(min_fame) == false) {
+			min_fame = 0
+		}
+
+		if (max_fame == "" || $.isNumeric(max_fame) == false) {
+			max_fame = 1
+		}
+
+		if (location[1] == 'recommendations' && $.isNumeric(max_fame) == false) {
+			max_interests = 1
+		}
+
 		if (!max_interests) {
 			max_interests = ""
 		}
@@ -754,14 +846,11 @@ $(document).ready(function()  {
 	});
 
 	$('.search-interests').on('click', function() {
-
-			$('#interest_holder').append("<button class='btn btn-warning interest_button_chosen' value='" + $(this).val() + "'>#" + $(this).val() + " </button>   ");
-
+			$('#interest_holder').append("<button class='btn btn-warning interest_button_chosen' value='" + $(this).val() + "'>#" + $(this).val() + " </button>    ");
 		})
 
 
 	$(document).on('click', '.interest_button_chosen', function() {
-
 		$(this).remove();
 	});
 
@@ -771,6 +860,5 @@ $(document).ready(function()  {
 		popupButtonClasses: 'fa fa-smile-o'
 	});
 	window.emojiPicker.discover();
-
 
 });

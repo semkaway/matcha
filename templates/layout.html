@@ -9,6 +9,15 @@
 	<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
 	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/emoji.css') }}">
 	<link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+
+
+
+
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@5.2.0/dist/min/dropzone.min.css" type="text/css">
+
+
+
+	
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
@@ -36,11 +45,13 @@
 			{% endfor %}
 		</div>
 		<div class="clearfix"></div>
-		{% block profileheader%}{% endblock%}
-		<div class="container-fluid">
-			{% include 'includes/_messages.html' %}
-			{% block body%}
-			{% endblock%}
+		<div class="stable">
+			{% block profileheader%}{% endblock%}
+			<div class="container-fluid">
+				{% include 'includes/_messages.html' %}
+				{% block body%}
+				{% endblock%}
+			</div>
 		</div>
 	</div>
 	<!-- <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
@@ -55,6 +66,7 @@
   <script src="/static/js/emoji-picker.js"></script>
 </body>
 <footer>
-	<div>FOOTER</div>
+	<div>matcha by <a href="https://profile.intra.42.fr/users/kvilna">
+  Kseniia Vilna</a></div>
 </footer>
 </html>

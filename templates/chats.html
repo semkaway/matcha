@@ -6,7 +6,7 @@
 	<div class="card p-2 mt-4 chat outer">
 	    <div class="form_holder">
 	    	<form action="" method="POST" id="message_form" class="mt-2">
-    			<textarea data-emojiable="true" class="form-control message position-relative"></textarea>
+    			<textarea data-emojiable="true" id="message-textarea" pattern="[\w\s.,()?]" class="form-control message position-relative"></textarea>
 			  	<button type="submit" class="btn btn-success float-right mt-2 mb-3">SEND MESSAGE</button>
 			</form> 	
 	    </div>

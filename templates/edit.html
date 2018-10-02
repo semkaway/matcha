@@ -45,11 +45,11 @@
 					  <option>Man</option>
 					</select>
 				</div>
-				<div class="form-group col-md-4 ml-3 short">
+				<div class="form-group col-md-4 ml-3 short-1">
 		            <label for="birthday">Born on</label> <br>
-		            <input id="day" name="day" type="number" value="{{ basic.bday_day }}"> /
-		            <input id="month" name="month" type="number" value="{{ basic.bday_month }}"> /
-		            <input id="year" name="year" type="number" value="{{ basic.bday_year }}">
+		            <input id="day" name="day" type="number" value="{{ basic.bday_day }}" required> /
+		            <input id="month" name="month" type="number" value="{{ basic.bday_month }}" required> /
+		            <input id="year" name="year" type="number" value="{{ basic.bday_year }}" required>
 	          	</div>
 	        </div>
 			<div class="form-row">
@@ -62,10 +62,10 @@
 					  <option>Men</option>
 					</select>
 				</div>
-				<div class="form-group col-md-4 ml-3 mt-4 short">
+				<div class="form-group col-md-4 ml-3 mt-4 short-1">
 		            <label for="age">Aged between</label>
-		            <input id="min_age" name="min_age" type="number" value="{{ basic.target_min_age }}"> and 
-		            <input id="max_age" name="max_age" type="number" value="{{ basic.target_max_age }}">
+		            <input id="min_age" name="min_age" type="number" value="{{ basic.target_min_age }}" required> and 
+		            <input id="max_age" name="max_age" type="number" value="{{ basic.target_max_age }}" required>
 	          	</div>
 			</div>
 			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
@@ -79,13 +79,13 @@
 		<div id="errorAlertLocation" class="alert alert-danger hidden-alert" role="alert"></div>
 	  	<form id="location_form">
 		  	<div class="form-row">
-				<div class="form-group col-md-4 short-1">
+				<div class="form-group col-md-4 short-2">
 					<label for="city">City: </label>
-					<input id="city" name="city" pattern="[a-zA-Z- ]{3,}" type="text" value="{{ city }}">
+					<input id="city" name="city" pattern="[a-zA-Z- ]{3,}" type="text" value="{{ city }}" required>
 				</div>
-				<div class="form-group col-md-4 short-1">
+				<div class="form-group col-md-4 short-2">
 					<label for="district">District: </label>
-					<input id="district" name="district" pattern="[a-zA-Z]{3,}" type="text" value="{{ district }}">
+					<input id="district" name="district" pattern="[a-zA-Z]{3,}" type="text" value="{{ district }}" required>
 				</div>
 			</div>
 			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
@@ -355,7 +355,7 @@
 				</div>
 				<div class="form-group col-md-4">
 					<label for="languages">Languages</label>
-					<input id="languages" name="languages" pattern="^[a-zA-Z0-9,.!? ]{3,}" type="text" value="{{ background.languages }}">
+					<input id="languages" name="languages" pattern="^[a-zA-Z0-9,.!? ]{3,}" type="text" value="{{ background.languages }}" required>
 				</div>
 	        </div>
 			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
@@ -411,7 +411,7 @@
 		</p>
 		<div class="form-row">
 			{% for tag in interests %}
-			<div class="form-group col-md-4">
+			<div class="form-group">
 				<button class="btn btn-outline-warning tag_button" value="{{ tag.interest }}">#{{tag.interest}}</button>
 			</div>
 			{% endfor %}
