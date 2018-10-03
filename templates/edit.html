@@ -37,7 +37,7 @@
 		<div id="errorAlertBasic" class="alert alert-danger hidden-alert" role="alert"></div>
   		<form name="BasicInfo" id="basic_info_form">
 	    	<div class="form-row">
-				<div class="form-group col-md-4">
+				<div class="form-group col-md-3">
 					<label for="selectGender">I'm a </label>
 					<select name="gender" id="gender" class="form-control" id="selectGender">
 					  <option>{{ basic.gender }}</option>
@@ -45,7 +45,7 @@
 					  <option>Man</option>
 					</select>
 				</div>
-				<div class="form-group col-md-4 ml-3 short-1">
+				<div class="form-group col-md-3 ml-3 short-1">
 		            <label for="birthday">Born on</label> <br>
 		            <input id="day" name="day" type="number" value="{{ basic.bday_day }}" required> /
 		            <input id="month" name="month" type="number" value="{{ basic.bday_month }}" required> /
@@ -53,7 +53,7 @@
 	          	</div>
 	        </div>
 			<div class="form-row">
-				<div class="form-group col-md-4">
+				<div class="form-group col-md-3">
 					<label for="selectSex">Looking for</label>
 					<select name="looking_for" id="looking_for" class="form-control" id="selectSex">
 					  <option>{{ basic.target_gender }}</option>
@@ -62,7 +62,7 @@
 					  <option>Men</option>
 					</select>
 				</div>
-				<div class="form-group col-md-4 ml-3 mt-4 short-1">
+				<div class="form-group col-md-3 ml-3 mt-4 short-1">
 		            <label for="age">Aged between</label>
 		            <input id="min_age" name="min_age" type="number" value="{{ basic.target_min_age }}" required> and 
 		            <input id="max_age" name="max_age" type="number" value="{{ basic.target_max_age }}" required>
@@ -306,7 +306,6 @@
 					  <option>Bachelors</option>
 					  <option>Masters</option>
 					  <option>PhD</option>
-					  <option>It's complicated</option>
 					</select>
 				</div>
 				<div class="form-group col-md-4">
@@ -369,11 +368,11 @@
 		<div id="errorAlertDescription" class="alert alert-danger hidden-alert" role="alert"></div>
 		<form name="Description" id="description_form">
 			<div class="form-group input-lg">
-				<label for="about_me">About me<small class="text-muted"> at least 500 characters</small></label>
+				<label for="about_me">About me<small class="text-muted"> at least 100 characters</small></label>
 				<textarea class="form-control" name="about_me" id="about_me" pattern="[\w\s.,()?]" minlength="100" maxlength="800" required>{{ description.about_me }}</textarea>
 			</div>
 			<div class="form-group input-lg">
-				<label for="employment">About my perfect match<small class="text-muted"> at least 500 characters</small></label>
+				<label for="employment">About my perfect match<small class="text-muted"> at least 100 characters</small></label>
 				<textarea class="textarea form-control" name="about_target" id="about_target" pattern="[\w\s.,()?]" minlength="100" maxlength="800" required>{{ description.about_target }}</textarea>
 			</div>
 		<button type="submit" class="btn btn-warning btn-block">SAVE</button>

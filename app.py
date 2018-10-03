@@ -91,158 +91,162 @@ def get_gender(user_demands):
 	return target_gender
 
 def get_users(sort, sort1, request, my_user_demands):
-	cur = mydb.cursor(dictionary=True, buffered=True)
+	if 'id' in session:
+		cur = mydb.cursor(dictionary=True, buffered=True)
 
-	app.logger.info(my_user_demands)
+		app.logger.info(my_user_demands)
 
-	cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
-	notifications = cur.fetchall()
+		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
+		notifications = cur.fetchall()
 
-	session['notifications'] = notifications
+		session['notifications'] = notifications
 
-	cur.execute("SELECT * FROM matcha.users_basic_info WHERE user_id = %s", (session['id'], ))
-	user_demands = cur.fetchone()
-	cur.execute("SELECT * FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
-	locate_user = cur.fetchone()
-	if locate_user['user_city'] == 'Unknown':
-		user_location = locate_user['city']
-	else:
-		user_location = locate_user['user_city']
-	target_gender = get_gender(user_demands)
-
-	cur.execute("SET sql_mode = ''")
-	cur.execute('''SELECT b.user_id AS recommended_user, a.interest_id
-					FROM matcha.users_interests a, matcha.users_interests b
-					WHERE a.user_id = %s AND b.user_id != %s AND a.interest_id = b.interest_id GROUP BY recommended_user HAVING COUNT(*) >= 1''', (session['id'], session['id'], ))
-	interests = cur.fetchall()
-
-	cur.execute('''SELECT b.user_id AS recommended_user, a.interest_id
-					FROM matcha.users_interests a, matcha.users_interests b
-					WHERE a.user_id = %s AND b.user_id != %s AND a.interest_id = b.interest_id''', (session['id'], session['id'], ))
-	my_interests = cur.fetchall()
-
-	cur.execute("SELECT * from matcha.interests")
-	interest_names = cur.fetchall()
-
-	cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
-	blocked = cur.fetchall()
-
-	for interest in my_interests:
-		for name in interest_names:
-			if interest['interest_id'] == name['id']:
-				interest['interest_id'] = name['interest']
-
-	if request == 'default':
-		if target_gender == "Both":
-			cur.execute(sort, (session['id'], user_demands['target_min_age'], user_demands['target_max_age'], user_location, ))
+		cur.execute("SELECT * FROM matcha.users_basic_info WHERE user_id = %s", (session['id'], ))
+		user_demands = cur.fetchone()
+		cur.execute("SELECT * FROM matcha.users_location WHERE user_id = %s", (session['id'], ))
+		locate_user = cur.fetchone()
+		if locate_user['user_city'] == 'Unknown':
+			user_location = locate_user['city']
 		else:
-			cur.execute(sort1, (session['id'], target_gender, user_demands['target_min_age'], user_demands['target_max_age'], user_location, ))
-	elif request == 'filter':
-		if target_gender == "Both":
-			cur.execute(sort, (session['id'], my_user_demands['min_age'], my_user_demands['max_age'],
-							my_user_demands['max_fame'], my_user_demands['min_fame'], user_location, ))
-		else:
-			cur.execute(sort1, (session['id'], target_gender, my_user_demands['min_age'], my_user_demands['max_age'],
-							my_user_demands['max_fame'], my_user_demands['min_fame'], user_location, ))
-	elif request == 'search':
-		cur.execute(sort, (int(my_user_demands['min_age']), int(my_user_demands['max_age']),
-							float(my_user_demands['max_fame']), float(my_user_demands['min_fame']), my_user_demands['max_location'], my_user_demands['max_location'],))
-		my_users = cur.fetchall()
+			user_location = locate_user['user_city']
+		target_gender = get_gender(user_demands)
 
-		app.logger.info(my_users)
+		cur.execute("SET sql_mode = ''")
+		cur.execute('''SELECT b.user_id AS recommended_user, a.interest_id
+						FROM matcha.users_interests a, matcha.users_interests b
+						WHERE a.user_id = %s AND b.user_id != %s AND a.interest_id = b.interest_id GROUP BY recommended_user HAVING COUNT(*) >= 1''', (session['id'], session['id'], ))
+		interests = cur.fetchall()
 
-		interests_p = my_user_demands['max_interests'].split(" ")
-		users_p = []
+		cur.execute('''SELECT b.user_id AS recommended_user, a.interest_id
+						FROM matcha.users_interests a, matcha.users_interests b
+						WHERE a.user_id = %s AND b.user_id != %s AND a.interest_id = b.interest_id''', (session['id'], session['id'], ))
+		my_interests = cur.fetchall()
 
-		for p in interests_p:
-			cur.execute('''SELECT matcha.users_interests.user_id, matcha.users_interests.interest_id,matcha.interests.interest FROM matcha.users_interests
-						INNER JOIN matcha.interests ON matcha.interests.id=matcha.users_interests.interest_id
-						WHERE matcha.interests.interest = %s''', (p, ))
-			data = cur.fetchall()
-			users_p.append(data)
+		cur.execute("SELECT * from matcha.interests")
+		interest_names = cur.fetchall()
 
-		for p in users_p:
-			if p == []:
-				users_p.remove(p)
+		cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
+		blocked = cur.fetchall()
 
-		if users_p != []:
-			for user in my_users:
-				user['tags'] = ""
-				user['blocked'] = False
+		for interest in my_interests:
+			for name in interest_names:
+				if interest['interest_id'] == name['id']:
+					interest['interest_id'] = name['interest']
 
-			for interest in users_p:
-				for o in interest:
-					for user in my_users:
-						if o['user_id'] == user['id']:
-							app.logger.info(user['username'])
-							user['tags'] += o['interest']+" "
+		if request == 'default':
+			if target_gender == "Both":
+				cur.execute(sort, (session['id'], user_demands['target_min_age'], user_demands['target_max_age'], user_location, ))
+			else:
+				cur.execute(sort1, (session['id'], target_gender, user_demands['target_min_age'], user_demands['target_max_age'], user_location, ))
+		elif request == 'filter':
+			if target_gender == "Both":
+				cur.execute(sort, (session['id'], my_user_demands['min_age'], my_user_demands['max_age'],
+								my_user_demands['max_fame'], my_user_demands['min_fame'], user_location, ))
+			else:
+				cur.execute(sort1, (session['id'], target_gender, my_user_demands['min_age'], my_user_demands['max_age'],
+								my_user_demands['max_fame'], my_user_demands['min_fame'], user_location, ))
+		elif request == 'search':
+			cur.execute(sort, (int(my_user_demands['min_age']), int(my_user_demands['max_age']),
+								float(my_user_demands['max_fame']), float(my_user_demands['min_fame']), my_user_demands['max_location'], my_user_demands['max_location'],))
+			my_users = cur.fetchall()
 
-			for user in my_users:
-				if user['tags'] == "":
-					my_users.remove(user)
+			app.logger.info(my_users)
 
-			for user in my_users:
-				for block in blocked:
-					if user['id'] == block['user_id']:
-						user['blocked'] = True
+			interests_p = my_user_demands['max_interests'].split(" ")
+			users_p = []
 
-	users = cur.fetchall()
+			for p in interests_p:
+				cur.execute('''SELECT matcha.users_interests.user_id, matcha.users_interests.interest_id,matcha.interests.interest FROM matcha.users_interests
+							INNER JOIN matcha.interests ON matcha.interests.id=matcha.users_interests.interest_id
+							WHERE matcha.interests.interest = %s''', (p, ))
+				data = cur.fetchall()
+				users_p.append(data)
 
-	location = []
+			for p in users_p:
+				if p == []:
+					users_p.remove(p)
 
-	for user in users:
-		cur.execute('''SELECT * FROM matcha.users_location WHERE user_id = %s''', (user['id'], ))
-		now_user = cur.fetchone()
-		ky = 40000 / 360
-		kx = math.cos(math.pi * locate_user['latitude'] / 180.0) * ky
-		dx = math.fabs(locate_user['longitude'] - now_user['longitude']) * kx
-		dx = math.fabs(locate_user['latitude'] - now_user['latitude']) * kx
-		dy = math.fabs(locate_user['latitude'] - now_user['latitude']) * ky
-		location.append({'id' : user['id'], 'location' : math.sqrt(dx * dx + dy * dy)})
+			if users_p != []:
+				for user in my_users:
+					user['tags'] = ""
+					user['blocked'] = False
 
-	for user in users:
-		user['common'] = 0
-		user['interest'] = ""
-		user['location_value'] = 0
-		user['blocked'] = False
+				for interest in users_p:
+					for o in interest:
+						for user in my_users:
+							if o['user_id'] == user['id']:
+								app.logger.info(user['username'])
+								user['tags'] += o['interest']+" "
 
-	for interest in my_interests:
+				for user in my_users:
+					if user['tags'] == "":
+						my_users.remove(user)
+
+				for user in my_users:
+					for block in blocked:
+						if user['id'] == block['user_id']:
+							user['blocked'] = True
+
+		users = cur.fetchall()
+
+		location = []
+
 		for user in users:
-			if interest['recommended_user'] == user['id']:
-				user['interest'] += interest['interest_id']+" "
-				user['common'] += 1
+			cur.execute('''SELECT * FROM matcha.users_location WHERE user_id = %s''', (user['id'], ))
+			now_user = cur.fetchone()
+			if locate_user['latitude'] != None and locate_user['longitude'] != None and now_user['latitude'] != None and now_user['longitude'] != None:
+				ky = 40000 / 360
+				kx = math.cos(math.pi * locate_user['latitude'] / 180.0) * ky
+				dx = math.fabs(locate_user['longitude'] - now_user['longitude']) * kx
+				dx = math.fabs(locate_user['latitude'] - now_user['latitude']) * kx
+				dy = math.fabs(locate_user['latitude'] - now_user['latitude']) * ky
+				location.append({'id' : user['id'], 'location' : math.sqrt(dx * dx + dy * dy)})
+			else:
+				location.append({'id' : user['id'], 'location' : 0})
 
-	for place in location:
 		for user in users:
-			if place['id'] == user['id']:
-				user['location_value'] = round(place['location'], 2)
+			user['common'] = 0
+			user['interest'] = ""
+			user['location_value'] = 0
+			user['blocked'] = False
 
-	for user in users:
-		for block in blocked:
-			if user['id'] == block['user_id']:
-				user['blocked'] = True
+		for interest in my_interests:
+			for user in users:
+				if interest['recommended_user'] == user['id']:
+					user['interest'] += interest['interest_id']+" "
+					user['common'] += 1
 
-	cur.close()
-	results = dict()
+		for place in location:
+			for user in users:
+				if place['id'] == user['id']:
+					user['location_value'] = round(place['location'], 2)
 
-	if request == 'default':
-		results['users'] = users
-		results['interests'] = interests
-	elif request == 'filter':
 		for user in users:
-			if user['location_value'] > float(my_user_demands['max_location']):
-				users.remove(user)
-		for user in users:
-			if int(user['common']) < int(my_user_demands['max_interests']):
-				user['common'] = 0
-				
-		results['users'] = users
-		results['interests'] = interests
-	elif request == 'search':
-		results['users'] = my_users
-		results['interests'] = users_p
-	
-	return results
+			for block in blocked:
+				if user['id'] == block['user_id']:
+					user['blocked'] = True
+
+		cur.close()
+		results = dict()
+
+		if request == 'default':
+			results['users'] = users
+			results['interests'] = interests
+		elif request == 'filter':
+			for user in users:
+				if user['location_value'] > float(my_user_demands['max_location']):
+					users.remove(user)
+			for user in users:
+				if int(user['common']) < int(my_user_demands['max_interests']):
+					user['common'] = 0
+					
+			results['users'] = users
+			results['interests'] = interests
+		elif request == 'search':
+			results['users'] = my_users
+			results['interests'] = users_p
+		
+		return results
 
 app.config['UPLOADED_PHOTOS_DEST'] = r"/Users/kvilna/Desktop/uploads/"
 photos = UploadSet('photos', IMAGES)
@@ -1608,7 +1612,7 @@ def save_account_info():
 def upload_profile_pic():
 	if 'file' in request.files:
 		file = request.files['file']
-		if file and allowed_file(file.filename) and file.filename != "" and file.filename.find(" ") == -1:
+		if file and allowed_file(file.filename) and file.filename != "" and file.filename.find(" ") == -1 and len(file.filename) < 240:
 			filename = secure_filename(file.filename)
 			newpath = r"static/uploads" + "/" + session['username'] + "/" + "profile_pic" + "/"
 			file_path = newpath + "/" + filename
@@ -1669,8 +1673,13 @@ def dropzone():
 			if not os.path.exists(newpath):
 				os.makedirs(newpath)
 			for f in request.files.getlist('file'):
-				if not allowed_file(f.filename) or f.filename != "" or f.filename.find(" ") != -1:
-					return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+				app.logger.info("f in file")
+				if not allowed_file(f.filename):
+					return jsonify({'error' : 'File not allowed'})
+				if f.filename == "":
+					return jsonify({'error' : 'Wrong filename'})
+				if f.filename.find(" ") != -1:
+					return jsonify({'error' : 'Spaces in filename'})
 				filename = secure_filename(f.filename)
 				f.save(os.path.join(newpath, filename))
 
@@ -2000,6 +2009,7 @@ def chats(person, page):
 		total = cur.rowcount
 		if total != 1:
 			cur.close()
+			app.logger.info("total != 1")
 			return redirect(url_for("chats_empty"))
 		cur.close()
 
@@ -2013,6 +2023,7 @@ def chats(person, page):
 		blocked = cur.rowcount
 		cur.close()
 		if num_mutual == 2 and blocked == 0:
+			app.logger.info("alrighr")
 			cur = msg_mydb.cursor(buffered=True, dictionary=True)
 			cur.execute("SELECT matcha.users.id, matcha.users.username FROM matcha.users")
 			users = cur.fetchall()
@@ -2026,7 +2037,7 @@ def chats(person, page):
 			num_pages = cur.rowcount / 15
 			if cur.rowcount % 15 != 0:
 				num_pages = cur.rowcount / 15 + 1
-			if page > num_pages:
+			if page > num_pages and (page != 1 and num_pages != 0):
 				return redirect(url_for('chats_empty'))
 			pages = []
 			pages_temp = 1
