@@ -15,20 +15,30 @@
 	<div id="map" class="mt-5"></div>
 </div>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbdW05TRFweVSKyzDODNSxm-5rwM6NGCE&callback=initMap"
-        async defer></script>
+	async defer></script>
 	<script>
 
 		var users = $('.user');
 
 		var markers = []
 
+		var current_user = $('#current_user').val()
+
 		users.each(function() {
-			markers.push(
-			{
-				coords:{lat: parseFloat($('.latitude', this).text()), lng: parseFloat($('.longitude', this).text())},
-          		iconImage:'https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png',
-          		content:'<img src="'+$('.profile_pic', this).text()+'" style="width:4vw;"><br><a href="profile/'+$('.username', this).text()+'"">'+$('.name', this).text()+" "+$('.last_name', this).text()+'</a>'
-			})
+			if (current_user == $('.username', this).text()) {
+				markers.push(
+				{
+					coords:{lat: parseFloat($('.latitude', this).text()), lng: parseFloat($('.longitude', this).text())},
+	          		content:'<img src="'+$('.profile_pic', this).text()+'" style="width:4vw;"><br><a href="profile/'+$('.username', this).text()+'"">'+$('.name', this).text()+" "+$('.last_name', this).text()+'</a>'
+				})
+			} else {
+				markers.push(
+				{
+					coords:{lat: parseFloat($('.latitude', this).text()), lng: parseFloat($('.longitude', this).text())},
+	          		iconImage:'https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png',
+	          		content:'<img src="'+$('.profile_pic', this).text()+'" style="width:4vw;"><br><a href="profile/'+$('.username', this).text()+'"">'+$('.name', this).text()+" "+$('.last_name', this).text()+'</a>'
+				})
+			}
 		})
 
 		var options = {
@@ -38,32 +48,22 @@
 
 		function initMap() {
 
-	        // Create a map object and specify the DOM element
-	        // for display.
 	        var map = new google.maps.Map($('#map')[0], options);
-
-	        // Create a marker and set its position.
 	        
 	         for(var i = 0;i < markers.length;i++){
-	        // Add marker
-
 		        addMarker(markers[i]);
 		    }
 
 		    function addMarker(props){
-		    	console.log(props.coords)
 		        var marker = new google.maps.Marker({
 		        	position:props.coords,
 		          	map:map,
 		        });
 
-		        // Check for customicon
 		        if(props.iconImage){
-		          // Set icon image
 		          marker.setIcon(props.iconImage);
 		        }
 
-		        // Check content
 		        if(props.content){
 		          var infoWindow = new google.maps.InfoWindow({
 		            content:props.content
@@ -75,10 +75,6 @@
 		        }
 		    }
   		}
-
-		console.log(markers)
 	</script>
-	<!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDbdW05TRFweVSKyzDODNSxm-5rwM6NGCE&callback=initMap"
-        async defer></script> -->
 	
 {% endblock %}

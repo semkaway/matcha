@@ -1,5 +1,7 @@
 $(document).ready(function()  {
 
+//CONFIGURATION
+
 	var location = window.location.pathname.split('/');
 	var socket = io.connect('http://127.0.0.1:5000');
 
@@ -44,6 +46,7 @@ $(document).ready(function()  {
         console.log('Websocket disconnected!');
     });
 
+//GET LOCATION
 
 	if (location[1] == 'profile') {
 
@@ -122,13 +125,13 @@ $(document).ready(function()  {
 	}
 
 	socket.on( 'profile response', function( msg ) {
-	console.log("message: "+msg.message)
-	console.log("sender: "+msg.visitor_name+", recieve: "+ msg.host_name)
 	var current_user = $('#current_user').val();
 	if(msg.host_name == current_user && msg.message != 'false') {
 	    $( '#notification-box' ).append('<div class="alert alert-success show fade alert-dismissible float-right" role="alert">'+msg.message+'<button type="button" class="close" data-dismiss="alert" aria-label="Close" value="'+msg.message+'"><span aria-hidden="true">&times;</span><input value="'+msg.message+'" hidden></button></div>' )
 	  }
 	})
+
+//EDIT PROFILE FORMS
 
 	$('#basic_info_form').on('submit', function(event) {
 
@@ -294,6 +297,34 @@ $(document).ready(function()  {
 		event.preventDefault();
 	});
 
+	$('.tag_button').on('click', function() {
+
+		$.ajax({
+			data : {
+				tag: $(this).val()
+			},
+			type: 'POST',
+			url: '/add_interests',
+		})
+
+		$('#chosen_interests').append("<button class='btn btn-warning tag_button_chosen' value='" + $(this).val() + "'>#" + $(this).val() + " </button>   ");
+	});
+
+	$(document).on('click', '.tag_button_chosen', function() {
+
+		$.ajax({
+			data : {
+				tag: $(this).val()
+			},
+			type: 'POST',
+			url: '/remove_interests',
+		})
+
+		$(this).remove();
+	});
+
+//PICTURES
+
 	$('#profile_picture').on('submit', function(event) {
 
 		var form_data = new FormData($('#profile_picture')[0]);
@@ -366,32 +397,30 @@ $(document).ready(function()  {
 
     $("#myDropzone").on(dropHandlerSet);
 
+    $('#user_gallery').on('show.bs.modal', function (event) {
+	  	var button = $(event.relatedTarget)
+	 	var recipient = button.data('whatever')
+	  	var modal = $(this)
+	  	modal.find('.modal-body img').attr('src', recipient)
+	  	$('#delete_pic').on('click', function() {
+	  		var answer = confirm("Are you totally 1000% sure?");
+	  		if (answer == true) {
+	  			var picture = modal.find('.modal-body img').attr('src').slice(3);
+	  			$.ajax({
+					data : {
+						username : location[2],
+						picture : picture
+					},
+					type: 'POST',
+					url: '/delete-pic',
+				})
+				window.location.replace(location[2]);
+	  		}
+	 	});
+	})
 
-    $('.tag_button').on('click', function() {
 
-		$.ajax({
-			data : {
-				tag: $(this).val()
-			},
-			type: 'POST',
-			url: '/add_interests',
-		})
-
-		$('#chosen_interests').append("<button class='btn btn-warning tag_button_chosen' value='" + $(this).val() + "'>#" + $(this).val() + " </button>   ");
-	});
-
-	$(document).on('click', '.tag_button_chosen', function() {
-
-		$.ajax({
-			data : {
-				tag: $(this).val()
-			},
-			type: 'POST',
-			url: '/remove_interests',
-		})
-
-		$(this).remove();
-	});
+//ACCOUNT SETTINGS
 
 	$('#change_account').on('submit', function(event) {
 
@@ -429,6 +458,8 @@ $(document).ready(function()  {
 
 	});
 
+//LIKE, DISLIKE, CONNECTION
+
 	if (value = $('#like-button div').text() == "LIKED") {
 		var clicked = false;
 	} else {
@@ -452,10 +483,8 @@ $(document).ready(function()  {
 
 	socket.on( 'connection response', function( msg ) {
 		var current_user = $('#current_user').val();
-		console.log("yo here")
 	    if (msg.host_name == current_user && msg.message != 'false') {
 	    	$('#notification-box').append('<div class="alert alert-success show fade alert-dismissible float-right" role="alert">'+msg.notification+'<button type="button" class="close" data-dismiss="alert" aria-label="Close" value="'+msg.notification+'"><span aria-hidden="true">&times;</span><input value="'+msg.notification+'" hidden></button></div>' )
-	    	console.log("yo here again")
 	    	$('#start-chat').html('<a id="start-chat-button" class="btn btn-success" href="/chats/'+msg.host_name+'" role="button">START CHAT</a>');
 	    }
 	})
@@ -474,7 +503,6 @@ $(document).ready(function()  {
 				url: '/save-like',
 			})
 			.done(function() {
-				console.log("like event")
 
 		        var current_user_id = $('#current_user_id').val();
 		        var current_user = $('#current_user').val();
@@ -493,11 +521,8 @@ $(document).ready(function()  {
 					url: '/check-mutual',
 				})
 				.done(function(data) {
-					console.log(data)
 					if (data.value == 'True') {
 						$('#start-chat').html('<a id="start-chat-button" class="btn btn-success" href="/chats/'+location[2]+'" role="button">START CHAT</a>');
-
-						console.log("connection event")
 
 				        var current_user_id = $('#current_user_id').val();
 				        var current_user = $('#current_user').val();
@@ -526,8 +551,6 @@ $(document).ready(function()  {
 			})
 			.done(function() {
 
-				console.log("dislike event")
-
 		        var current_user_id = $('#current_user_id').val();
 		        var current_user = $('#current_user').val();
 		        socket.emit( 'dislike event', {
@@ -541,6 +564,8 @@ $(document).ready(function()  {
 	    }
 	});
 
+//USER INTERACTION
+
 	$('#report_user').click(function() {
 
 		$.ajax({
@@ -551,8 +576,6 @@ $(document).ready(function()  {
 			url: '/report-user',
 		})
 		.done(function(data) {
-
-			console.log(data);
 
 			if (data.error) {
 				$('#errorAlertReport').text(data.error).show();
@@ -574,8 +597,6 @@ $(document).ready(function()  {
 			url: '/block-user',
 		})
 		.done(function(data) {
-
-			console.log(data)
 
 			if (data.error) {
 				$('#errorAlertReport').text(data.error).show();
@@ -614,9 +635,9 @@ $(document).ready(function()  {
 		});
 	});
 
-	$('#notification_form').on('submit', function(event) {
+//NOTIFICATIONS
 
-		console.log($('#new_like').prop('checked'));
+	$('#notification_form').on('submit', function(event) {
 
 		$.ajax({
 			data : {
@@ -644,38 +665,13 @@ $(document).ready(function()  {
 		event.preventDefault();
 	});
 
-	$('#user_gallery').on('show.bs.modal', function (event) {
-	  	var button = $(event.relatedTarget)
-	 	var recipient = button.data('whatever')
-	  	var modal = $(this)
-	  	modal.find('.modal-body img').attr('src', recipient)
-	  	$('#delete_pic').on('click', function() {
-	  		console.log(modal);
-	  		var answer = confirm("Are you totally 1000% sure?");
-	  		if (answer == true) {
-	  			var picture = modal.find('.modal-body img').attr('src').slice(3);
-	  			$.ajax({
-					data : {
-						username : location[2],
-						picture : picture
-					},
-					type: 'POST',
-					url: '/delete-pic',
-				})
-				window.location.replace(location[2]);
-	  		}
-	 	});
-	})
-
-
-	//NEW CODE
+//CHAT
 
 	socket.on( 'my response', function( msg ) {
 		var current_user = $('#current_user').val();
 		var d = new Date();
 		var time_n = d.toLocaleTimeString('en-GB', {weekday: 'short', hour: '2-digit', minute:'2-digit'});
 		var node_time = document.createTextNode(time_n)
-		console.log(node_time)
 		var message = document.createTextNode(": "+msg.message)
 		var sender_name = document.createTextNode(msg.sender_name)
 		var outer_div = document.createElement('div')
@@ -689,7 +685,7 @@ $(document).ready(function()  {
 		var clearfix = document.createElement('div')
 		clearfix.className = "clearfix"
 
-		if (msg.message !== '' && msg.message != 'false' && ((msg.recieve_name == current_user) || (msg.sender_name == current_user))) {
+		if (msg.message !== '' && msg.message != 'false' && ((msg.recieve_name == current_user && msg.sender_name == location[2]) || (msg.sender_name == current_user && msg.recieve_name == location[2]))) {
 		    if (msg.sender_name == current_user) {
 		    	bold.appendChild(sender_name)
 				inner_div.appendChild(bold)
@@ -744,7 +740,6 @@ $(document).ready(function()  {
 	        if (user_input == "") {
 	        	user_input =  $('.message').text();
 	        }
-	        console.log(user_input)
 	        socket.emit( 'my event', {
 	        	sender_name : current_user,
 	        	sender_id : current_user_id,
@@ -769,11 +764,11 @@ $(document).ready(function()  {
 		})
 	});
 
+//FILTERS
+
 	$('.recommend-filter').on('click', function() {
 		var current = window.location.href.toLowerCase()
-		console.log(current)
 		if (current.indexOf("sort_by=") != -1) {
-			console.log("found at " + current.indexOf("sort_by="))
 			var new_current = current.substring(0, current.indexOf("sort_by=") - 1)
 			if (new_current.indexOf('?') != -1) {
 				window.location.replace(new_current + "&sort_by=" + $(this).val())
@@ -829,8 +824,6 @@ $(document).ready(function()  {
 		interests.each(function () {
 			max_interests += $(this).val()+"+"
 		})
-
-		console.log(max_interests)		
 
 		var current = window.location.href.toLowerCase()
 		var path = current

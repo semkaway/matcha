@@ -1,7 +1,6 @@
 {% extends 'layout.html' %}
 
 {% block body%}
-
 {% if session.logged_in %}
 	<h1>There's plenty of fish in the sea</h1>
 		<div class="row">
@@ -54,14 +53,17 @@
 	  <div class="form-row">
 	    <div class="form-group col-md-6">
 	      <label for="inputName"></label>
+	      <small class="text-light">must be alphanumeric in 1-12 chars</small>
 	      <input name="name" type="text" class="form-control" id="inputName" placeholder="Name" pattern="[a-zA-Z0-9_-]{1,12}" title="must be alphanumeric in 1-12 chars" required>
 	    </div>
 	    <div class="form-group col-md-6">
 	      <label for="inputLastname"></label>
+	      <small class="text-light">must be alphanumeric in 1-50 chars</small>
 	      <input name="lastname" type="text" class="form-control" id="inputLastname" placeholder="Last name" pattern="[a-zA-Z0-9_-]{1,50}" title="must be alphanumeric in 1-50 chars" required>
 	    </div>
 	    <div class="form-group col-md-6">
 	      <label for="inputUsername"></label>
+	      <small class="text-light">must be alphanumeric in 3-12 chars</small>
 	      <input name="username" type="text" class="form-control" id="inputUsername" placeholder="Username" pattern="[a-zA-Z0-9_-]{3,12}" title="must be alphanumeric in 3-12 chars" required>
 	    </div>
 	    <div class="form-group col-md-6">
@@ -72,6 +74,7 @@
 	  <div class="form-row">
 	    <div class="form-group col-md-6">
 	      <label for="inputPassword4"></label>
+	      <small class="text-light">min 5 characters with uppercase letters and a number</small>
 	      <input name="password" type="password" class="form-control" id="inputPassword4" placeholder="Password" minlength="5" maxlength="15" required>
 	    </div>
 	    <div class="form-group col-md-6">

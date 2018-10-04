@@ -3,6 +3,7 @@
 {% block body%}
 	{% if messages != "none"%}
 	<h1 class="text-center text-uppercase m-3">Chat with <a href="/profile/{{uid.username}}">{{uid.username}}</a></h1>
+	<input id="chat-with" val="{{uid.username}}" hidden>
 	<div class="card p-2 mt-4 chat outer">
 	    <div class="form_holder">
 	    	<form action="" method="POST" id="message_form" class="mt-2">

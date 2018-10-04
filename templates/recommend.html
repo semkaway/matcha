@@ -34,7 +34,7 @@
 		{% set max_interests = 1 %}
 	{% endif %}
 	<div>
-	 	<button class="navbar-toggler filters-navbar" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo2" aria-controls="navbarTogglerDemo2" aria-expanded="false" aria-label="Toggle navigation">
+	 	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo2" aria-controls="navbarTogglerDemo2" aria-expanded="false" aria-label="Toggle navigation">
 	    	FILTERS
 	  	</button>
 
@@ -136,6 +136,8 @@
 					{% endfor %}
 				{% endif %}
 			{% endfor %}
+		{% elif sort_by != 'fame_rating' and sort_by != 'age' and sort_by != 'id' and sort_by != 'location_value' and sort_by != 'common'%}
+			<h1>It looks like your search is somehow incorrect.</h1>
 		{% else %}
 			{% for user in users|sort(attribute=sort_by) %}
 				{% if user.blocked == False %}

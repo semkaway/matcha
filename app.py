@@ -3,12 +3,10 @@ from flask import Flask, render_template, flash, redirect, url_for, session, log
 from flask_mail import Mail
 import mysql.connector
 from validators import validate_email, validate_password, confirm_password, send_message
-from wtforms import Form, StringField, TextAreaField, PasswordField, IntegerField
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from passlib.hash import sha256_crypt
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import RequestEntityTooLarge
 import os
 from PIL import Image
 from flask_dropzone import Dropzone
@@ -17,18 +15,7 @@ from geopy.geocoders import Nominatim
 from functools import wraps
 from flask_socketio import SocketIO, send, emit
 import shutil
-from datetime import date
 import math
-
-import time
-
-import sys, errno
-
-# from signal import signal, SIGPIPE, SIG_DFL
-# signal(SIGPIPE, SIG_DFL)
-
-
-# CONFIGURATION
 
 app = Flask(__name__)
 
@@ -94,8 +81,6 @@ def get_users(sort, sort1, request, my_user_demands):
 	if 'id' in session:
 		cur = mydb.cursor(dictionary=True, buffered=True)
 
-		app.logger.info(my_user_demands)
-
 		cur.execute("SELECT * FROM matcha.notification_box WHERE current_user_id = %s", (session['id'],))
 		notifications = cur.fetchall()
 
@@ -150,8 +135,6 @@ def get_users(sort, sort1, request, my_user_demands):
 								float(my_user_demands['max_fame']), float(my_user_demands['min_fame']), my_user_demands['max_location'], my_user_demands['max_location'],))
 			my_users = cur.fetchall()
 
-			app.logger.info(my_users)
-
 			interests_p = my_user_demands['max_interests'].split(" ")
 			users_p = []
 
@@ -169,23 +152,24 @@ def get_users(sort, sort1, request, my_user_demands):
 			if users_p != []:
 				for user in my_users:
 					user['tags'] = ""
-					user['blocked'] = False
 
 				for interest in users_p:
 					for o in interest:
 						for user in my_users:
 							if o['user_id'] == user['id']:
-								app.logger.info(user['username'])
 								user['tags'] += o['interest']+" "
 
 				for user in my_users:
 					if user['tags'] == "":
 						my_users.remove(user)
 
-				for user in my_users:
-					for block in blocked:
-						if user['id'] == block['user_id']:
-							user['blocked'] = True
+			for user in my_users:
+					user['blocked'] = False
+
+			for user in my_users:
+				for block in blocked:
+					if user['id'] == block['user_id']:
+						user['blocked'] = True
 
 		users = cur.fetchall()
 
@@ -442,10 +426,10 @@ def index(page):
 
 		if validate_email(email) == False:
 			message = "Wrong format email"
-			return render_template('home.html', error=message)
+			return render_template('home.html', error=message, page="index")
 		if validate_password(password_check) == False:
 			message = "Your password should contain at least one number and one uppercase letter"
-			return render_template('home.html', error=message)
+			return render_template('home.html', error=message, page="index")
 		if confirm_password(password_check, confirm) == False:
 			message = "Passwords don't match"
 			return render_template('home.html', error=message, page="index")
@@ -478,7 +462,7 @@ def index(page):
 		session['notifications'] = notifications
 
 		cur = mydb.cursor(dictionary=True, buffered=True)
-		cur.execute("SELECT * FROM matcha.users WHERE matcha.users.id != %s", (session['id'], ))
+		cur.execute("SELECT * FROM matcha.users ORDER BY matcha.users.id")
 		num_pages = cur.rowcount / 10
 		if page > num_pages:
 			return redirect(url_for('index'))
@@ -495,8 +479,7 @@ def index(page):
 						INNER JOIN matcha.users_pictures ON matcha.users_pictures.user_id=matcha.users.id
 						INNER JOIN matcha.users_basic_info ON matcha.users_basic_info.user_id=matcha.users.id
 						INNER JOIN matcha.users_location ON matcha.users_location.user_id=matcha.users.id
-						WHERE matcha.users.id != %s
-						ORDER BY fame_rating DESC LIMIT %s, %s''', (session['id'], page * 10 - 10, 10, ))
+						ORDER BY matcha.users.id LIMIT %s, %s''', (page * 10 - 10, 10, ))
 		users = cur.fetchall()
 		cur.execute('''SELECT * FROM matcha.users_blocked WHERE blocked_by_user_id = %s''', (session['id'], ))
 		blocked = cur.fetchall()
@@ -596,7 +579,6 @@ def map():
 def handle_my_custom_event(json, methods=['GET', 'POST']):
 	if 'recieve_name' in json:
 		if json['message'] != "":
-			app.logger.info("yo")
 			s_mydb = mysql.connector.connect(**config)
 			notify = True
 
@@ -626,7 +608,6 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 			s_mydb.commit()
 			cur.close()
 			s_mydb.close()
-			app.logger.info("my event exit")
 			socketio.emit('my response', json)
 
 @socketio.on('profile check')
@@ -657,7 +638,6 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 		s_mydb.commit()
 		cur.close()
 		s_mydb.close()
-		app.logger.info("my profile exit")
 		socketio.emit('profile response', json)
 
 @socketio.on('like event')
@@ -692,7 +672,6 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 				send_message(app, theme, user_id['email'], 'new_like', mail, arguments)
 		cur.close()
 		s_mydb.close()
-		app.logger.info("my like exit")
 		socketio.emit('like response', json)
 
 @socketio.on('dislike event')
@@ -726,7 +705,6 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 				send_message(app, theme, user_id['email'], 'unlike', mail, arguments)
 		cur.close()
 		s_mydb.close()
-		app.logger.info("my dislike exit")
 		socketio.emit('dislike response', json)
 
 @socketio.on('connection event')
@@ -760,7 +738,6 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 				send_message(app, theme, user_id['email'], 'mutual_like', mail, arguments)
 		cur.close()
 		s_mydb.close()
-		app.logger.info("my connection exit")
 		socketio.emit('connection response', json)
 
 # USER AUTHORIZATION
@@ -1143,15 +1120,12 @@ def edit():
 	cur.execute("SELECT interest_id FROM matcha.users_interests WHERE user_id = %s", (session['id'], ))
 	my_interests_id = cur.fetchall()
 
-	app.logger.info(my_interests_id)
-
 	for interest in my_interests_id:
 		cur = temp_mydb.cursor(dictionary=True, buffered=True)
 		cur.execute("SELECT * FROM matcha.interests WHERE id = %s", (interest['interest_id'], ))
 		data = cur.fetchone()
 		my_interests.append(data)
 		cur.close()
-		app.logger.info(interest['interest_id'])
 	cur.close()
 	temp_mydb.close()
 
@@ -1169,7 +1143,6 @@ def save_basic_info():
 		max_age = request.form['max_age']
 
 		if int(request.form['day']) > 31 or int(request.form['day']) < 1 or int(request.form['month']) > 12 or int(request.form['month']) < 1 or int(request.form['min_age']) < 1 or int(request.form['max_age']) < 1:
-			app.logger.info("here for some reason")
 			return jsonify({'error' : 'Ooopsie. Something went wrong :('})
 
 		today = date.today()
@@ -1673,7 +1646,6 @@ def dropzone():
 			if not os.path.exists(newpath):
 				os.makedirs(newpath)
 			for f in request.files.getlist('file'):
-				app.logger.info("f in file")
 				if not allowed_file(f.filename):
 					return jsonify({'error' : 'File not allowed'})
 				if f.filename == "":
@@ -1695,6 +1667,8 @@ def dropzone():
 			mydb.close()
 
 			return jsonify({'success' : 'Your pictures have been uploaded'})
+		return jsonify({'error' : 'Ooopsie :( Something went wrong'})
+	else:
 		return jsonify({'error' : 'Ooopsie :( Something went wrong'})
 	return redirect(url_for('edit'))
 
@@ -2009,7 +1983,6 @@ def chats(person, page):
 		total = cur.rowcount
 		if total != 1:
 			cur.close()
-			app.logger.info("total != 1")
 			return redirect(url_for("chats_empty"))
 		cur.close()
 
@@ -2023,7 +1996,6 @@ def chats(person, page):
 		blocked = cur.rowcount
 		cur.close()
 		if num_mutual == 2 and blocked == 0:
-			app.logger.info("alrighr")
 			cur = msg_mydb.cursor(buffered=True, dictionary=True)
 			cur.execute("SELECT matcha.users.id, matcha.users.username FROM matcha.users")
 			users = cur.fetchall()
@@ -2072,7 +2044,6 @@ def delete_pic():
 		cur.close()
 
 		if os.path.exists(request.form['picture']):
-			app.logger.info("pic exists")
 			os.remove(request.form['picture'])
 		return "OK"
 	return(redirect(url_for('index')))
@@ -2184,7 +2155,6 @@ def page_gone(e):
 
 @app.errorhandler(500)
 def server_error(e):
-	app.logger.info("aaa")
 	return render_template('500.html'), 500
 
 @app.errorhandler(413)
