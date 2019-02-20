@@ -1,0 +1,9 @@
+Hello, {{arguments.my_username}},
+
+You got a new message from {{url_for('profile', username=arguments.who_wrote, _external = True)}}
+
+It says: {{arguments.message}}
+
+All the best,
+
+Matcha team

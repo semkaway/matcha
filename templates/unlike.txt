@@ -1,0 +1,9 @@
+Hello, {{arguments.my_username}},
+
+We are sorry to inform that {{url_for('profile', username=arguments.who_unliked, _external = True)}} has just unliked you :(
+
+Don't give up and start to build new connections!
+
+All the best,
+
+Matcha team

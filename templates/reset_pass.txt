@@ -1,0 +1,11 @@
+Hello, {{arguments.username}},
+
+Please, follow the link to reset your password.
+
+{{url_for('password_reset_finish', token=arguments.token, _external = True)}}
+
+If you got this message by mistake, please, ignore it.
+
+All the best,
+
+Matcha team

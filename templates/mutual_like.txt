@@ -1,0 +1,9 @@
+Hello, {{arguments.my_username}},
+
+{{url_for('profile', username=arguments.who_liked, _external = True)}} has just liked you back, so now you have a connection.
+
+Go ahead and start a chat!
+
+All the best,
+
+Matcha team

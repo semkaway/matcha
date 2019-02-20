@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		img {
+			max-width: 40vw;
+		}
+
+		button {
+			height: 5vh;
+			width: 12vw;
+			margin: 1vh;
+		}
+
+		a {
+			text-transform: uppercase;
+			text-decoration: none;
+			color: black;
+		}
+	</style>
+</head>
+<body>
+	<h1>Hello, {{arguments.my_username}},</h1>
+	<p>You got a new message from <a href="{{url_for('profile', username=arguments.who_wrote, _external = True)}}">{{ arguments.who_wrote }}</a></p>
+	<p>It says: {{arguments.message}}</p>
+	<p>All the best,</p>
+	<p>Matcha team</p>
+
+</body>
+</html>

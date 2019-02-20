@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+
+<div class="container">
+	<div class="row">
+		<div class="col-12 col-md-6">
+			<table class="table table-borderless mt-3">
+			<h2 class="mt-5">Users who visited you</h2><small class="text-muted">Results for the past 3 days</small>
+			  	<thead>
+			   		<tr>
+			      		<th class="col-md-auto">Username</th>
+			      		<th class="col-6 pl-5 text-center">Time</th>
+			    	</tr>
+			  	</thead>
+				<tbody class="long">
+				{% for visit in visits %}
+					<tr>
+				    	<td class="col-md-auto"><a href="/profile/{{visit[0]}}">{{visit[0]}}</a></td>
+				    	<td class="col-6 pl-5 text-center">{{visit[1]}}</td>
+				    </tr>
+				{% endfor %}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="col-12 col-md-6">
+			<table class="table table-borderless mt-3">
+				<h2 class="mt-5">Profiles you visited</h2><small class="text-muted">Results for the past 3 days</small>
+			  	<thead>
+			    	<tr>
+			      		<th class="col-md-auto" scope="col">Username</th>
+			     	 	<th class="col-6 pl-5 text-center" scope="col">Time</th>
+			    	</tr>
+			  	</thead>
+			 	<tbody class="long">
+			  	{% for visit in my_visits %}
+				    <tr>
+				      <td class="col-md-auto"><a href="/profile/{{visit[0]}}">{{visit[0]}}</a></td>
+				      <td class="col-6 pl-5 text-center">{{visit[1]}}</td>
+				    </tr>
+				{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}

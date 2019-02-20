@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		img {
+			max-width: 40vw;
+		}
+
+		button {
+			height: 5vh;
+			width: 12vw;
+			margin: 1vh;
+		}
+
+		a {
+			text-transform: uppercase;
+			text-decoration: none;
+			color: black;
+		}
+	</style>
+</head>
+<body>
+	<h1>Hello, {{arguments.my_username}},</h1>
+	<p>We are sorry to inform that <a href="{{url_for('profile', username=arguments.who_unliked, _external = True)}}">{{ arguments.who_unliked }}</a> has just unliked you :(</p>
+	<p>Don't give up and start to build new connections!</p>
+	<p>All the best,</p>
+	<p>Matcha team</p>
+
+</body>
+</html>

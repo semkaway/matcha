@@ -1,0 +1,424 @@
+{% extends 'layout.html' %}
+
+{% block body%}
+
+<div class="btn-group-wrap jumbotron mt-4">
+	<div class="btn-group mx-auto" role="group">
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseBasic" aria-expanded="false" aria-controls="collapseBasic">
+	    Basic info
+	  </button>
+	  <button id="location" class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseLocation" aria-expanded="false" aria-controls="collapseLocation">
+	    Location
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseAppearance" aria-expanded="false" aria-controls="collapseAppearance">
+	    Appearance
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseLifestyle" aria-expanded="false" aria-controls="collapseLifestyle">
+	    Lifestyle
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseBackground" aria-expanded="false" aria-controls="collapseBackground">
+	    Background
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseDescription" aria-expanded="false" aria-controls="collapseDescription">
+	    Description
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapsePicture" aria-expanded="false" aria-controls="collapsePicture">
+	    Pictures
+	  </button>
+	  <button class="btn btn-warning btn-lg" type="button" data-toggle="collapse" data-target="#collapseInterests" aria-expanded="false" aria-controls="collapseInterests">
+	    Interests
+	  </button>
+	</div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseBasic">
+  	<div class="card card-body p-5 profile-blocks">
+  		<h1 class="text-center mb-4 h3">BASIC INFO</h1>
+  		<div id="successAlertBasic" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertBasic" class="alert alert-danger hidden-alert" role="alert"></div>
+  		<form name="BasicInfo" id="basic_info_form">
+	    	<div class="form-row">
+				<div class="form-group col-md-3">
+					<label for="selectGender">I'm a </label>
+					<select name="gender" id="gender" class="form-control" id="selectGender">
+					  <option>{{ basic.gender }}</option>
+					  <option>Woman</option>
+					  <option>Man</option>
+					</select>
+				</div>
+				<div class="form-group col-md-3 ml-3 short-1">
+		            <label for="birthday">Born on</label> <br>
+		            <input id="day" name="day" type="number" value="{{ basic.bday_day }}" required> /
+		            <input id="month" name="month" type="number" value="{{ basic.bday_month }}" required> /
+		            <input id="year" name="year" type="number" value="{{ basic.bday_year }}" required>
+	          	</div>
+	        </div>
+			<div class="form-row">
+				<div class="form-group col-md-3">
+					<label for="selectSex">Looking for</label>
+					<select name="looking_for" id="looking_for" class="form-control" id="selectSex">
+					  <option>{{ basic.target_gender }}</option>
+					  <option>Both</option>
+					  <option>Women</option>
+					  <option>Men</option>
+					</select>
+				</div>
+				<div class="form-group col-md-3 ml-3 mt-4 short-1">
+		            <label for="age">Aged between</label>
+		            <input id="min_age" name="min_age" type="number" value="{{ basic.target_min_age }}" required> and 
+		            <input id="max_age" name="max_age" type="number" value="{{ basic.target_max_age }}" required>
+	          	</div>
+			</div>
+			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+		</form>
+  	</div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseLocation">
+  	<div class="card card-body profile-blocks">
+  		<h1 class="text-center mb-4 h3">LOCATION</h1>
+  		<div id="successAlertLocation" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertLocation" class="alert alert-danger hidden-alert" role="alert"></div>
+	  	<form id="location_form">
+		  	<div class="form-row">
+				<div class="form-group col-md-4 short-2">
+					<label for="city">City: </label>
+					<input id="city" name="city" pattern="[a-zA-Z- ]{3,}" type="text" value="{{ city }}" required>
+				</div>
+				<div class="form-group col-md-4 short-2">
+					<label for="district">District: </label>
+					<input id="district" name="district" pattern="[a-zA-Z]{3,}" type="text" value="{{ district }}" required>
+				</div>
+			</div>
+			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+		</form>
+	</div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseAppearance">
+  <div class="card card-body profile-blocks">
+  	<h1 class="text-center mb-4 h3">APPEARANCE</h1>
+    	<div id="successAlertAppearance" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertAppearance" class="alert alert-danger hidden-alert" role="alert"></div>
+  		<form name="Appearance" id="appearance_form">
+	    	<div class="form-row">
+				<div class="form-group col-md-4">
+					<label for="height">Height </label>
+					<select name="height" id="height" class="form-control" id="height">
+					  <option>{{ appearance.height }}</option>
+					  <option>122cm</option>
+					  <option>124cm</option>
+					  <option>126cm</option>
+					  <option>128cm</option>
+					  <option>130cm</option>
+					  <option>132cm</option>
+					  <option>134cm</option>
+					  <option>136cm</option>
+					  <option>138cm</option>
+					  <option>140cm</option>
+					  <option>142cm</option>
+					  <option>144cm</option>
+					  <option>146cm</option>
+					  <option>148cm</option>
+					  <option>150cm</option>
+					  <option>152cm</option>
+					  <option>154cm</option>
+					  <option>156cm</option>
+					  <option>158cm</option>
+					  <option>160cm</option>
+					  <option>162cm</option>
+					  <option>164cm</option>
+					  <option>166cm</option>
+					  <option>168cm</option>
+					  <option>170cm</option>
+					  <option>172cm</option>
+					  <option>174cm</option>
+					  <option>176cm</option>
+					  <option>178cm</option>
+					  <option>180cm</option>
+					  <option>182cm</option>
+					  <option>184cm</option>
+					  <option>186cm</option>
+					  <option>188cm</option>
+					  <option>190cm</option>
+					  <option>192cm</option>
+					  <option>194cm</option>
+					  <option>196cm</option>
+					  <option>198cm</option>
+					  <option>200cm</option>
+					  <option>202cm</option>
+					  <option>204cm</option>
+					  <option>206cm</option>
+					  <option>208cm</option>
+					  <option>210cm</option>
+					  <option>212cm</option>
+					  <option>214cm</option>
+					  <option>216cm</option>
+					  <option>218cm</option>
+					  <option>220cm</option>
+					  <option>222cm</option>
+					  <option>224cm</option>
+					  <option>226cm</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="body_type">Body type</label>
+					<select name="body_type" id="body_type" class="form-control" id="body_type">
+					  <option>{{ appearance.body_type }}</option>
+					  <option>Curvy</option>
+					  <option>Athletic</option>
+					  <option>Skinny</option>
+					  <option>A few extra kilos</option>
+					  <option>Average</option>
+					  <option>Big-boned</option>
+					  <option>Muscular</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="hair_color">Hair color</label>
+					<select name="hair_color" id="hair_color" class="form-control" id="hair_color">
+					  <option>{{ appearance.hair_color }}</option>
+					  <option>Black</option>
+					  <option>Red</option>
+					  <option>Blond</option>
+					  <option>Brown</option>
+					  <option>Grey</option>
+					  <option>Crazy-colored</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="eye_color">Eye color</label>
+					<select name="eye_color" id="eye_color" class="form-control" id="eye_color">
+					  <option>{{ appearance.eye_color }}</option>
+					  <option>Black</option>
+					  <option>Green</option>
+					  <option>Hazel</option>
+					  <option>Brown</option>
+					  <option>Grey</option>
+					  <option>Blue</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="hair_type">Hair type</label>
+					<select name="hair_type" id="hair_type" class="form-control" id="hair_type">
+					  <option>{{ appearance.hair_type }}</option>
+					  <option>Long</option>
+					  <option>Shoulder length</option>
+					  <option>Very short</option>
+					  <option>Shaved</option>
+					  <option>Bald</option>
+					</select>
+				</div>
+	        </div>
+			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+		</form>
+  </div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseLifestyle">
+  <div class="card card-body profile-blocks">
+  	<h1 class="text-center mb-4 h3">LIFESTYLE</h1>
+    	<div id="successAlertLifestyle" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertLifestyle" class="alert alert-danger hidden-alert" role="alert"></div>
+  		<form name="Lifestyle" id="lifestyle_form">
+	    	<div class="form-row">
+				<div class="form-group col-md-4">
+					<label for="relationship_status">Relationship status</label>
+					<select name="relationship_status" id="relationship_status" class="form-control" id="relationship_status">
+					  <option>{{ lifestyle.relationship_status }}</option>
+					  <option>Single</option>
+					  <option>Divorced</option>
+					  <option>Married</option>
+					  <option>Widowed</option>
+					  <option>It's complicated</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="children">Childern</label>
+					<select name="children" id="children" class="form-control" id="children">
+					  <option>{{ lifestyle.children }}</option>
+					  <option>None</option>
+					  <option>One</option>
+					  <option>Two</option>
+					  <option>Three</option>
+					  <option>Many</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="would_like_children">Would like childern</label>
+					<select name="would_like_children" id="would_like_children" class="form-control" id="would_like_children">
+					  <option>{{ lifestyle.would_like_children }}</option>
+					  <option>Yes</option>
+					  <option>No</option>
+					  <option>Don't know yet</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="diet">Eating</label>
+					<select name="diet" id="diet" class="form-control" id="diet">
+					  <option>{{ lifestyle.diet }}</option>
+					  <option>Vegan</option>
+					  <option>Vegetarian</option>
+					  <option>Only organic</option>
+					  <option>Fast food</option>
+					  <option>Home cooking</option>
+					  <option>Healthy</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="drinking">Drinking</label>
+					<select name="drinking" id="drinking" class="form-control" id="drinking">
+					  <option>{{ lifestyle.drinking }}</option>
+					  <option>Don't drink</option>
+					  <option>Rarely</option>
+					  <option>Social drinking</option>
+					  <option>Given up</option>
+					  <option>Reguralry</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="smoking">Smoking</label>
+					<select name="smoking" id="smoking" class="form-control" id="smoking">
+					  <option>{{ lifestyle.smoking }}</option>
+					  <option>Don't smoke</option>
+					  <option>Occasionally</option>
+					  <option>Moderate</option>
+					  <option>Heavily</option>
+					  <option>Pipe</option>
+					  <option>Ex-smoker</option>
+					  <option>Trying to give up</option>
+					</select>
+				</div>
+	        </div>
+			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+		</form>
+  </div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseBackground">
+  <div class="card card-body profile-blocks">
+	<h1 class="text-center mb-4 h3">BACKGROUND</h1>
+	<div id="successAlertBackground" class="alert alert-success hidden-alert" role="alert"></div>
+	<div id="errorAlertBackground" class="alert alert-danger hidden-alert" role="alert"></div>
+		<form name="Background" id="background_form">
+	    	<div class="form-row">
+				<div class="form-group col-md-4">
+					<label for="education">Education</label>
+					<select name="education" id="education" class="form-control" id="education">
+					  <option>{{ background.education }}</option>
+					  <option>High shcool</option>
+					  <option>Colledge</option>
+					  <option>Bachelors</option>
+					  <option>Masters</option>
+					  <option>PhD</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="employment">Employment</label>
+					<select name="employment" id="employment" class="form-control" id="employment">
+					  <option>{{ background.employment }}</option>
+					  <option>Employed</option>
+					  <option>Self-employed</option>
+					  <option>Retired</option>
+					  <option>Volunteer</option>
+					  <option>Student</option>
+					  <option>Unemployed</option>
+					  <option>Other</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="occupation">Occupation</label>
+					<select name="occupation" id="occupation" class="form-control" id="occupation">
+					  <option>{{ background.occupation }}</option>
+					  <option>Accounting</option>
+					  <option>Media</option>
+					  <option>Agrigulture</option>
+					  <option>Architecture</option>
+					  <option>Artistic/Creative/Design</option>
+					  <option>Charity</option>
+					  <option>Consultant</option>
+					  <option>Engineering</option>
+					  <option>Estate Management</option>
+					  <option>Executive</option>
+					  <option>Finance</option>
+					  <option>Food and Drink Services</option>
+					  <option>IT</option>
+					  <option>Languages</option>
+					  <option>Legal</option>
+					  <option>Tourism</option>
+					  <option>Management</option>
+					  <option>Political/Government</option>
+					  <option>Military</option>
+					  <option>Retail</option>
+					  <option>Marketing</option>
+					  <option>Scientist</option>
+					  <option>Education</option>
+					  <option>Transportation</option>
+					  <option>Other</option>
+					</select>
+				</div>
+				<div class="form-group col-md-4">
+					<label for="languages">Languages</label>
+					<input id="languages" name="languages" pattern="^[a-zA-Z0-9,.!? ]{3,}" type="text" value="{{ background.languages }}" required>
+				</div>
+	        </div>
+			<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+		</form>
+	</div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseDescription">
+  	<div class="card card-body profile-blocks">
+  		<h1 class="text-center mb-4 h3">DESCRIPTION</h1>
+		<div id="successAlertDescription" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertDescription" class="alert alert-danger hidden-alert" role="alert"></div>
+		<form name="Description" id="description_form">
+			<div class="form-group input-lg">
+				<label for="about_me">About me<small class="text-muted"> at least 100 characters</small></label>
+				<textarea class="form-control" name="about_me" id="about_me" pattern="[\w\s.,()?]" minlength="100" maxlength="800" required>{{ description.about_me }}</textarea>
+			</div>
+			<div class="form-group input-lg">
+				<label for="employment">About my perfect match<small class="text-muted"> at least 100 characters</small></label>
+				<textarea class="textarea form-control" name="about_target" id="about_target" pattern="[\w\s.,()?]" minlength="100" maxlength="800" required>{{ description.about_target }}</textarea>
+			</div>
+		<button type="submit" class="btn btn-warning btn-block">SAVE</button>
+	</form>
+  </div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapsePicture">
+  <div class="card card-body profile-blocks">
+    <h1 class="text-center mb-4 h3">PROFILE PICTURE<small class="text-muted"><br>(The best choice would be a waist-up or portrait picture)</small></h1>
+    <div id="successAlertProfilePic" class="alert alert-success hidden-alert" role="alert"></div>
+	<div id="errorAlertProfilePic" class="alert alert-danger hidden-alert" role="alert"></div>
+	<form id="profile_picture" method="post" enctype="multipart/form-data">
+		<input id="upload_pic" type=file name=file id="file">
+		<input type=submit class="btn btn-warning" id="upload_pic_button" value=Upload disabled>
+	</form>
+	<div class="mt-5">
+		<h1 class="text-center mb-4 h3">PICTURES OF YOUR AWESOME LIFE<small class="text-muted"><br>(maximum 5)</small></h1>
+		<div id="successAlertDropzone" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertDropzone" class="alert alert-danger hidden-alert" role="alert"></div>
+		{{ dropzone.load() }}
+		{{ dropzone.style('border: 0.08rem dashed #d5d6cd; border-radius: 1rem; min-height: 30vh;') }}
+	    {{ dropzone.create(action_view='index') }}
+    </div>
+  </div>
+</div>
+<div class="collapse multi-collapse mt-2" id="collapseInterests">
+  	<div class="card card-body profile-blocks">
+    	<h1 class="text-center mb-4 h3">INTERESTS</h1>
+		<div id="successAlertTag" class="alert alert-success hidden-alert" role="alert"></div>
+		<div id="errorAlertTag" class="alert alert-danger hidden-alert" role="alert"></div>
+		<p id="chosen_interests">My interests:
+			{% for interests in my_interests %}
+				<button class="btn btn-warning tag_button_chosen" value="{{ interests.interest }}">#{{interests.interest}} </button>
+			{% endfor %}
+		</p>
+		<div class="form-row">
+			{% for tag in interests %}
+			<div class="form-group">
+				<button class="btn btn-outline-warning tag_button" value="{{ tag.interest }}">#{{tag.interest}}</button>
+			</div>
+			{% endfor %}
+	  	</div>
+	</div>
+</div>
+
+<div>
+	<img src="static/img/info-arrow.png">
+</div>
+{% endblock %}

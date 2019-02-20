@@ -1,0 +1,200 @@
+{% extends 'layout.html' %}
+
+{% block profileheader %}
+<div id="successAlertReport" class="alert alert-success hidden-alert" role="alert"></div>
+<div id="errorAlertReport" class="alert alert-danger hidden-alert" role="alert"></div>
+
+<div class="profile-header mt-1 container">
+	<div class="row">
+		<div class="col-12 col-md">
+			<h1 class="text-uppercase text-warning">{{data.name}} {{data.last_name}} {% if data.logout == None %} <small class="text-success"> ONLINE </small>{% else %} <small class="text-ligit"> Last seen: {{data.logout}} </small> {% endif %}</h1>
+		</div>
+		<div class="col-12 col-md">
+			<h3 class="text-light">Fame rating: {{fame_rating}}</h3>
+		</div>
+		<div class="col-12 col-md">
+		</div>
+		<div class="col-12 col-md">
+			<div class="float-right">
+				<div class="row">
+					{% if data.username != session['username'] %}
+						{% if pic.profile_pic != "static/img/default_profile.jpg"%}
+						    <div id="start-chat" class="col mr-2 mt-2 ml-3">
+								{% if mutual == True %}
+									<a id="start-chat-button" class="btn btn-success" href="/chats/{{data.username}}" role="button">START CHAT</a>
+								{% endif %}
+								<div class="form_holder"></div>
+							</div>
+						    <div id="like-button" class="col mr-2 mt-2">
+						    	{% if likes == True %}
+								    <div class="btn btn-danger">LIKED</div>
+								{% else %}
+								    <div class="btn btn-outline-danger">LIKE</div>
+								{% endif %}
+							</div>
+						{% endif %}
+						<div id="blocking" class="col mr-2 mt-2">
+							{% if i_blocked == True %}
+								<div id="unblock-user" class="col btn btn-info">UNBLOCK USER</div>
+							{% elif he_blocked == True %}
+								<div id="blocked-user" class="col btn btn-info">THIS USER BLOCKED YOU</div>
+							{% else %}
+								<div id="block-user" class="col btn btn-info">BLOCK USER</div>
+							{% endif %}
+						</div>
+				    {% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-12 col-md-5">
+			<img class="rounded-circle border border-warning profile-pic-big float-left ml-3 mt-2" src="../{{pic.profile_pic}}">
+		</div>
+		<div class="col-md-7 d-none d-lg-block">
+			<div class="row px-4 stable">
+			    <div class="col-12 col-md-6 mt-5 d-none d-lg-block">
+			    	<div class="profile-header-blocks rounded mr-1 p-2">
+				      <p class="text-uppercase text-dark">Gender: <span class="text-white">{{ basic.gender}}</span></p>
+				      <p class="text-uppercase text-dark">Age: <span class="text-white">{{ basic.age }}</span></p>
+				      <p class="text-uppercase text-dark">Location: <span class="text-white">{{ city }}</span></p>
+				    </div>
+			    </div>
+			    <div class="col-12 col-md-6 mt-5 d-none d-lg-block">
+				    <div class="profile-header-blocks rounded mr-1 p-2">
+				      <p class="text-uppercase text-dark">Looking for: <span class="text-white">{{ basic.target_gender}}</span></p>
+				      <p class="text-uppercase text-dark">Age between: <span class="text-white">{{ basic.target_min_age }}</span> and <span class="text-white">{{ basic.target_max_age }}</span></p>
+				    </div>
+				</div>
+		    </div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+
+{% block body%}
+
+<div class="mt-3">
+      {% for interest in my_interests %}
+      		<button class="btn btn-warning tag_button_chosen m-2" value="{{ interests.interest }}">#{{interest.interest}} </button>
+      {% endfor %}
+</div>
+
+<div class="container">
+	<div class="row">
+		<div class="col-12 d-lg-none">
+			<div class="border-top border-left border-warning mt-3 mr-2 p-2 profile-info-block">
+		      <p>Gender: {{ basic.gender}}</p>
+		      <p>Age: {{ basic.age }}</p>
+		      <p>Location: {{ city }}</p>
+		    </div>
+		</div>
+		<div class="col-12 d-lg-none">
+		    <div class="border-top border-left border-warning mt-3 mr-2 p-2 profile-info-block">
+		      <p>Looking for: {{ basic.target_gender}}</p>
+		      <p>Age between: {{ basic.target_min_age }} and {{ basic.target_max_age }}</p>
+		    </div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-12 col-md-4">
+			<div class="border-top border-left border-warning mt-3 mr-2 p-2 profile-info-block">
+		    	<h5 class="text-uppercase text-center">appearance</h5>
+		    	<div class="m-1">
+				    <p>Height: {{appearance.height}}</p>
+				    <p>Body type: {{appearance.body_type}}</p>
+				    <p>Hair color: {{appearance.hair_color}}</p>
+				    <p>Eye color: {{appearance.eye_color}}</p>
+				    <p>Hair type: {{appearance.hair_type}}</p>
+		    	</div>
+		    </div>
+		</div>
+		{% if photos != "none" %}
+			<div class="col-12 col-md-8">
+				<div class="border-bottom border-right border-warning mt-3 mr-2 p-2 profile-info-block">
+				{% for photo in photos %}
+					<img class="img-responsive gallery_pic m-1" src="../{{photo['upload_pic']}}" data-toggle="modal" data-target="#user_gallery" data-whatever="../{{photo['upload_pic']}}">
+				{% endfor %}
+					<div class="modal fade" id="user_gallery" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+					  	<div class="modal-dialog" role="document">
+					    	<div class="modal-content">
+					      		<div class="modal-header">
+					        		<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					          		<span aria-hidden="true">&times;</span>
+					       			</button>
+					      		</div>
+					      		<div class="modal-body">
+					            	<img>
+					    		</div>
+					    		{% if data.username == session['username'] %}
+						    		<div class="modal-footer">
+								        <button type="button" class="btn btn-danger" id="delete_pic">Delete picture</button>
+								    </div>
+								{% endif %}
+					  		</div>
+						</div>		
+					</div>
+				</div>
+			</div>
+		{% else %}
+		<div class="col-12 col-md-8">
+			<div class="border-bottom border-right border-warning mt-3 mr-2 p-5 profile-info-block">
+				<h4 class="text-uppercase text-muted text-center">this user has no pictures :(</h4>
+			</div>
+		</div>
+		{% endif %}
+	</div>
+<!-- </div> -->
+	<div class="row">
+	    <div class="col-12 col-md-4">
+	    	<div class="border-top border-left border-warning mt-3 mr-2 p-2 profile-info-block">
+		    	<h5 class="text-uppercase text-center">lifestyle</h5>
+		    	<div class="m-1">
+			      	<p>Relationship status: {{lifestyle.relationship_status}}</p>
+				    <p>Children: {{lifestyle.children}}</p>
+				    <p>Would like children: {{lifestyle.would_like_children}}</p>
+				    <p>Diet: {{lifestyle.diet}}</p>
+				    <p>Drinking: {{lifestyle.drinking}}</p>
+				    <p>Smoking: {{lifestyle.smoking}}</p>
+				</div>
+			</div>
+	    </div>
+	    <div class="col-12 col-md-8">
+	    	<div class="border-bottom border-right border-warning mt-3 mr-2 p-2 profile-info-block">
+		    	<div class="m-1">
+		    		<h5 class="text-uppercase text-center">about me</h5>
+			    	<p>{{description.about_me}}</p>
+			    </div>
+			</div>
+	    </div>
+    </div>
+    <div class="row">
+	    <div class="col-12 col-md-4">
+	    	<div class="border-top border-left border-warning mt-3 mr-2 p-2 profile-info-block">
+		    	<h5 class="text-uppercase text-center">background</h5>
+		    	<div class="m-1">
+		    		<p>Education: {{background.education}}</p>
+			    	<p>Employment: {{background.employment}}</p>
+			    	<p>Occupation: {{background.occupation}}</p>
+			    	<p>Languages I speak: {{background.languages}}</p>
+		    	</div>
+			</div>
+	    </div>
+	    <div class="col-12 col-md-8">
+	    	<div class="border-bottom border-right border-warning mt-3 mr-2 p-2 profile-info-block">
+		    	<div class="m-1">
+		    		<h5 class="text-uppercase text-center">my soulmate</h5>
+			    	<p>{{description.about_target}}</p>
+			    </div>
+			</div>
+	    </div>
+    </div>
+{% if data.username != session['username'] %}
+<div>
+	<button class="btn btn-block btn-light mt-3" id="report_user">REPORT USER</button>
+</div>
+{% endif %}
+
+{% endblock %}

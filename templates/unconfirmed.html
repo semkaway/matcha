@@ -1,0 +1,19 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+
+<form method="POST" action="" class="jumbotron pt-3 mt-5">
+	<h1>Welcome!</h1>
+	<br>
+	<p>You have not confirmed your account. Please check your inbox and your spam folder. You should have received an email with a confirmation link.</p>
+	<p>Didn't get the email?</p>
+	<div class="form-row">
+		<div class="form-group col-md-6">
+	      <label for="inputEmail4"></label>
+	      <input name="email" type="email" class="form-control" id="inputEmail4" placeholder="Email" pattern="[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,4}$" minlength="5" required>
+	    </div>
+	</div>
+	<button type="submit" class="btn btn-warning">Resend</button>
+</form>
+
+{% endblock %}
