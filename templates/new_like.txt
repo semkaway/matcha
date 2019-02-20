@@ -1,9 +1,0 @@
-Hello, {{arguments.my_username}},
-
-You have just recieved a new like from {{url_for('profile', username=arguments.who_liked, _external = True)}}
-
-Go ahead and like {% if arguments.gender == Male %} him {% else %} her {% endif %}!
-
-All the best,
-
-Matcha team

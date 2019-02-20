@@ -1,9 +1,0 @@
-There has been a new user report!
-
-Report by: {{url_for('profile', username=arguments.user_reporting, _external = True)}}">{{ arguments.user_reporting }}
-
-User reported: {{url_for('profile', username=arguments.user_reported, _external = True)}}">{{ arguments.user_reported }}
-
-All the best,
-
-Matcha team
