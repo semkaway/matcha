@@ -33,7 +33,7 @@ s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 config = {
 	'host' : 'localhost',
 	'user' : 'test',
-	'password' : 'matchatest',
+	'password' : 'test',
 	'charset' : 'utf8mb4'
 }
 
